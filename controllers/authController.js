@@ -183,73 +183,189 @@ const addUserByAdmin = async (req, res) => {
 
 
 
-// @desc Login
-// @route POST /auth
+// @desc Send login verification code
+// @route POST /auth/login/send-code
 // @access Public
-const login = async (req, res) => {
-  const { phoneNumber, password } = req.body;
+const sendLoginCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
 
-  if (!phoneNumber || !password) {
-    return res.status(400).json({ error: "Phone number and password are required" });
+    if (!phoneNumber) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    // Check if user exists
+    const foundUser = await User.findOne({ phoneNumber }).exec();
+    if (!foundUser) {
+      return res.status(401).json({ error: "Phone number not registered" });
+    }
+
+    // Check if the user is suspended
+    if (!foundUser.active) {
+      return res.status(403).json({ 
+        error: "Your account is suspended. Please contact support." 
+      });
+    }
+
+    // Check if the user is verified
+    if (!foundUser.verified) {
+      return res.status(402).json({ 
+        error: "Your phone number is not verified. Please complete signup first." 
+      });
+    }
+
+    // Generate verification code
+    const verificationCode = generateRandomToken();
+
+    // Check if there's an existing token for this phone number
+    const existingToken = await Token.findOne({ 
+      phoneNumber, 
+      purpose: "login" 
+    }).exec();
+
+    if (existingToken) {
+      // Update existing token
+      existingToken.token = verificationCode;
+      existingToken.expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
+      await existingToken.save();
+    } else {
+      // Create new token
+      await Token.create({
+        phoneNumber,
+        token: verificationCode,
+        purpose: "login",
+        expiresAt: new Date(Date.now() + 5 * 60000) // 5 minutes
+      });
+    }
+
+    // Send SMS
+    await sendSMS(phoneNumber, verificationCode);
+
+    res.status(200).json({
+      message: "Login verification code sent successfully",
+      success: true
+    });
+  } catch (error) {
+    console.error("Error sending login verification code:", error);
+    res.status(500).json({ 
+      error: "Failed to send verification code",
+      success: false 
+    });
   }
+};
 
-  const foundUser = await User.findOne({ phoneNumber }).exec();
+// @desc Verify login code and login user
+// @route POST /auth/login/verify
+// @access Public
+const verifyLoginCode = async (req, res) => {
+  try {
+    const { phoneNumber, verificationCode } = req.body;
 
-  // Check if user exists or is inactive
-  if (!foundUser) {
-    return res.status(401).json({ error: "You are not registered" });
-  }
+    if (!phoneNumber || !verificationCode) {
+      return res.status(400).json({ 
+        error: "Phone number and verification code are required" 
+      });
+    }
 
-  // Check if the user is suspended
-  if (!foundUser.active) {
-    return res
-      .status(403)
-      .json({ error: "Your account is suspended. Please contact support." });
-  }
+    // Find the token
+    const token = await Token.findOne({ 
+      phoneNumber, 
+      purpose: "login" 
+    }).exec();
 
-  // Check if the user is verified
-  if (!foundUser.verified) {
-    return res.status(402).json({ error: "Your phone number is not verified" });
-  }
+    if (!token) {
+      return res.status(400).json({ 
+        error: "No verification code found for this phone number" 
+      });
+    }
 
-  // Check if password matches
-  const passwordsMatch = await comparePassword(password, foundUser.password);
-  if (!passwordsMatch) return res.status(401).json({ message: "Unauthorized" });
+    // Check if token has expired
+    if (token.expiresAt <= new Date()) {
+      await token.deleteOne();
+      return res.status(400).json({ 
+        error: "Verification code has expired" 
+      });
+    }
 
-  // Generate access and refresh tokens
-  const accessToken = jwt.sign(
-    {
-      UserInfo: {
-        userId: foundUser._id,
-        verified: foundUser.verified,
-        phoneNumber: foundUser.phoneNumber,
-        img: foundUser.profileImage,
-        username: foundUser.username,
-        roles: foundUser.roles,
-        position: foundUser.position,
-        adminAccess: foundUser.adminAccess,
+    // Verify the code
+    if (token.token !== verificationCode) {
+      return res.status(400).json({ 
+        error: "Invalid verification code" 
+      });
+    }
+
+    // Find the user
+    const foundUser = await User.findOne({ phoneNumber }).exec();
+    if (!foundUser) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Check if the user is suspended
+    if (!foundUser.active) {
+      return res.status(403).json({ 
+        error: "Your account is suspended. Please contact support." 
+      });
+    }
+
+    // Check if the user is verified
+    if (!foundUser.verified) {
+      return res.status(402).json({ 
+        error: "Your phone number is not verified" 
+      });
+    }
+
+    // Generate access and refresh tokens
+    const accessToken = jwt.sign(
+      {
+        UserInfo: {
+          userId: foundUser._id,
+          verified: foundUser.verified,
+          phoneNumber: foundUser.phoneNumber,
+          img: foundUser.profileImage,
+          username: foundUser.username,
+          roles: foundUser.roles,
+          position: foundUser.position,
+          adminAccess: foundUser.adminAccess,
+        },
       },
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" }
-  );
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
+    );
 
-  const refreshToken = jwt.sign(
-    { username: foundUser.username },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: "7d" }
-  );
+    const refreshToken = jwt.sign(
+      { username: foundUser.username },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: "7d" }
+    );
 
-  // Create secure cookie with refresh token
-  res.cookie("jwt", refreshToken, {
-    httpOnly: true, // Accessible only by web server
-    secure: true, // HTTPS
-    sameSite: "None", // Cross-site cookie
-    maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiry: set to match rT
-  });
+    // Create secure cookie with refresh token
+    res.cookie("jwt", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
-  // Send accessToken containing username and roles
-  res.json({ accessToken });
+    // Delete the verification token
+    await token.deleteOne();
+
+    res.json({ 
+      accessToken,
+      user: {
+        id: foundUser._id,
+        username: foundUser.username,
+        phoneNumber: foundUser.phoneNumber,
+        verified: foundUser.verified,
+        roles: foundUser.roles
+      }
+    });
+  } catch (error) {
+    console.error("Error verifying login code:", error);
+    res.status(500).json({ 
+      error: "Failed to verify login code",
+      success: false 
+    });
+  }
 };
 
 // @desc Refresh
@@ -813,7 +929,7 @@ const sendPhoneVerificationCode = async (req, res) => {
     }
 
     // Send SMS
-    await sendSMS(phoneNumber, verificationCode);
+    const smsResult = await sendSMS(phoneNumber, verificationCode);
 
     res.status(200).json({
       message: "Verification code sent successfully",
@@ -935,7 +1051,7 @@ const completeSignup = async (req, res) => {
       });
     }
 
-    // Create new user
+    // Create new user (no password needed for phone-based auth)
     const newUser = await User.create({
       username,
       phoneNumber,
@@ -997,7 +1113,8 @@ const completeSignup = async (req, res) => {
 };
 
 module.exports = {
-  login,
+  sendLoginCode,
+  verifyLoginCode,
   verifyEmail,
   refresh,
   createNewOTP,

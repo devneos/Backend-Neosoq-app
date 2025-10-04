@@ -40,7 +40,10 @@ const UserSchema = new Schema({
     default: false,
   },
   profileImage: String,
-  password: String,
+  password: {
+    type: String,
+    required: false, // No longer required for phone-based auth
+  },
 });
 
 const UserModel = mongoose.model("User", UserSchema);

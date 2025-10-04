@@ -4,7 +4,9 @@ const authController = require("../controllers/authController");
 const loginLimiter = require("../middleware/loginLimiter");
 // const { verifyAdmin } = require("../middleware/authMiddleware");
 
-router.route("/login").post(loginLimiter, authController.login);
+// Phone-based login routes
+router.route("/login/send-code").post(loginLimiter, authController.sendLoginCode);
+router.route("/login/verify").post(authController.verifyLoginCode);
 
 router.route("/register").post(authController.register);
 

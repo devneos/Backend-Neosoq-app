@@ -2994,20 +2994,40 @@ const receiveContactMessage = async (email, fullname) => {
   }
 };
 
-// Send SMS verification code
+// Send SMS verification code using Twilio
 const sendSMS = async (phoneNumber, verificationCode) => {
   try {
+    console.log(`📱 Sending SMS to: ${phoneNumber}`);
+    console.log(`🔐 Verification code: ${verificationCode}`);
+    console.log(`📞 From Twilio number: ${process.env.TWILIO_PHONE_NUMBER}`);
+    
     const message = await client.messages.create({
       body: `Your verification code is: ${verificationCode}. This code will expire in 5 minutes.`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber
     });
     
-    console.log(`SMS sent successfully. Message SID: ${message.sid}`);
-    return { success: true, messageSid: message.sid };
+    console.log(`✅ SMS sent successfully. Message SID: ${message.sid}`);
+    console.log(`📱 Phone: ${phoneNumber}`);
+    console.log(`🔐 Code: ${verificationCode}`);
+    console.log(`⏰ Code expires in 5 minutes`);
+    
+    return { 
+      success: true, 
+      messageSid: message.sid 
+    };
   } catch (error) {
-    console.error('Error sending SMS:', error);
-    throw new Error('Failed to send verification SMS');
+    console.error('❌ Error sending SMS:', error.message);
+    console.error('Error code:', error.code);
+    
+    // For development, still log the code even if SMS fails
+    console.log(`\n🚧 SMS FAILED - Manual verification:`);
+    console.log(`📱 Phone: ${phoneNumber}`);
+    console.log(`🔐 Verification Code: ${verificationCode}`);
+    console.log(`⏰ Code expires in 5 minutes`);
+    console.log(`💡 Use this code for testing\n`);
+    
+    throw new Error(`Failed to send verification SMS: ${error.message}`);
   }
 };
 
