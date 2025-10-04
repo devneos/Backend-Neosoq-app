@@ -1112,6 +1112,113 @@ const completeSignup = async (req, res) => {
   }
 };
 
+// @desc Google sign-in / sign-up using ID token from client
+// @route POST /auth/google
+// @access Public
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('GOOGLE_CLIENT_ID not set in environment');
+      return res.status(500).json({ error: 'Server misconfigured' });
+    }
+
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+    // Verify ID token
+    const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Google account has no email' });
+    }
+
+    // Try to find user by googleId first, then by email
+    let user = await User.findOne({ googleId }).exec();
+    if (!user) {
+      user = await User.findOne({ email }).exec();
+    }
+
+    if (user) {
+      // If user exists but doesn't have googleId, attach it
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.provider = 'google';
+        user.verified = true;
+        if (!user.profileImage && picture) user.profileImage = picture;
+        await user.save();
+      }
+    } else {
+      // Create new user
+      const username = name || email.split('@')[0];
+      user = await User.create({
+        username,
+        email,
+        profileImage: picture,
+        googleId,
+        provider: 'google',
+        verified: true,
+        roles: ['User'],
+        active: true,
+      });
+    }
+
+    // Check if suspended
+    if (!user.active) {
+      return res.status(403).json({ error: 'Your account is suspended. Please contact support.' });
+    }
+
+    // Issue tokens as in other flows
+    const accessToken = jwt.sign(
+      {
+        UserInfo: {
+          userId: user._id,
+          verified: user.verified,
+          phoneNumber: user.phoneNumber,
+          img: user.profileImage,
+          username: user.username,
+          roles: user.roles,
+          position: user.position,
+          adminAccess: user.adminAccess,
+        },
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { username: user.username },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.cookie('jwt', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      accessToken,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        verified: user.verified,
+        roles: user.roles,
+        profileImage: user.profileImage,
+      },
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(500).json({ error: 'Failed to authenticate with Google' });
+  }
+};
+
 module.exports = {
   sendLoginCode,
   verifyLoginCode,
@@ -1131,4 +1238,5 @@ module.exports = {
   sendPhoneVerificationCode,
   verifyPhoneCode,
   completeSignup,
+  googleLogin,
 };

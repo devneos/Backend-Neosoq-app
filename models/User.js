@@ -19,10 +19,25 @@ const UserSchema = new Schema({
     type: String,
     required: false,
   },
+  // phoneNumber is optional now to support OAuth signups (Google) which may not provide phone
   phoneNumber: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
+  },
+  // Store Google ID for OAuth users
+  googleId: {
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true,
+  },
+  // Provider (e.g., 'google' or 'local')
+  provider: {
+    type: String,
+    required: false,
+    default: 'local',
   },
   roles: {
     type: [String],

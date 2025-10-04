@@ -15,6 +15,9 @@ router.post("/add-user", authController.addUserByAdmin);
 
 router.route("/refresh").get(authController.refresh);
 
+// Google OAuth token sign-in (client sends idToken from Google)
+router.route("/google").post(authController.googleLogin);
+
 router.route("/verifyotp").post(authController.VerifyOTP);
 
 router.route("/createnewotp").post(authController.createNewOTP);
