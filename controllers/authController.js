@@ -1138,32 +1138,43 @@ const googleLogin = async (req, res) => {
 
     // Try to find user by googleId first, then by email
     let user = await User.findOne({ googleId }).exec();
-    if (!user) {
-      user = await User.findOne({ email }).exec();
-    }
+    // Track where the match came from for debugging
+    let matchSource = null; // 'googleId' | 'email' | 'created'
 
     if (user) {
-      // If user exists but doesn't have googleId, attach it
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.provider = 'google';
-        user.verified = true;
-        if (!user.profileImage && picture) user.profileImage = picture;
-        await user.save();
-      }
+      matchSource = 'googleId';
+      console.log(`Google login: matched existing user by googleId (${googleId}) -> userId=${user._id}`);
     } else {
-      // Create new user
-      const username = name || email.split('@')[0];
-      user = await User.create({
-        username,
-        email,
-        profileImage: picture,
-        googleId,
-        provider: 'google',
-        verified: true,
-        roles: ['User'],
-        active: true,
-      });
+      // Not found by googleId; try by email
+      user = await User.findOne({ email }).exec();
+      if (user) {
+        matchSource = 'email';
+        console.log(`Google login: matched existing user by email (${email}) -> userId=${user._id}. Attaching googleId=${googleId}`);
+        // Attach googleId if missing
+        if (!user.googleId) {
+          user.googleId = googleId;
+          user.provider = 'google';
+          user.verified = true;
+          if (!user.profileImage && picture) user.profileImage = picture;
+          await user.save();
+          console.log(`Google login: updated user ${user._id} with googleId=${googleId}`);
+        }
+      } else {
+        // Create new user
+        matchSource = 'created';
+        const username = name || email.split('@')[0];
+        user = await User.create({
+          username,
+          email,
+          profileImage: picture,
+          googleId,
+          provider: 'google',
+          verified: true,
+          roles: ['User'],
+          active: true,
+        });
+        console.log(`Google login: created new user ${user._id} for email=${email} with googleId=${googleId}`);
+      }
     }
 
     // Check if suspended
@@ -1212,9 +1223,22 @@ const googleLogin = async (req, res) => {
         roles: user.roles,
         profileImage: user.profileImage,
       },
+      // Provide non-production debug info so frontend devs can see match source.
+      ...(process.env.NODE_ENV !== 'production' ? { debug: { matchSource } } : {}),
     });
   } catch (error) {
-    console.error('Google login error:', error);
+    // Improve error responses for token verification failures so frontend can
+    // show proper 'Unauthorized' messages instead of a generic server error.
+    console.error('Google login error:', error && error.stack ? error.stack : error);
+
+    const message = (error && error.message) ? error.message.toLowerCase() : '';
+
+    // Common verification-related messages may include 'invalid', 'expired', 'token'
+    if (message.includes('invalid') || message.includes('expired') || message.includes('token')) {
+      return res.status(401).json({ error: 'Invalid or expired Google ID token' });
+    }
+
+    // Fallback to 500 for unexpected server errors
     return res.status(500).json({ error: 'Failed to authenticate with Google' });
   }
 };
