@@ -64,3 +64,13 @@ const UserSchema = new Schema({
 const UserModel = mongoose.model("User", UserSchema);
 
 module.exports = UserModel;
+
+// Ensure indexes exist with the desired options. These calls are idempotent
+// when the server starts but will not modify an existing index with different
+// options. Use the provided migration script if you need to change an existing index.
+try {
+  UserSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
+  UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
+} catch (err) {
+  // Indexes will be created by mongoose during connection; ignore errors here.
+}
