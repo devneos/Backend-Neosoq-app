@@ -1,5 +1,4 @@
 const User = require("../models/User");
-const Invitation = require("../models/Invitation");
 const Token = require("../models/Token");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
@@ -25,33 +24,13 @@ const crypto = require("crypto");
 // @route POST /auth
 // @access Public
 const register = async (req, res) => {
-  const { name, email, country, region, phone, password, invitationToken } =
+  const { name, email, country, region, phone, password } =
     req.body;
   let role = "User";
   let adminAccess = [];
   let position = "";
 
   try {
-    let invitation;
-    if (invitationToken) {
-      invitation = await Invitation.findOne({
-        email,
-        token: invitationToken,
-      });
-      if (!invitation) {
-        return res.status(400).send("Invalid invitation");
-      }
-      role = invitation.role; // set role from invitation
-      adminAccess = invitation.adminAccess;
-      position = invitation.position;
-
-      // Log the invitation to verify values
-      console.log("Fetched Invitation:", invitation);
-
-      // Remove the invitation after the user has registered
-      await Invitation.deleteOne({ _id: invitation._id });
-    }
-
     if (!name) {
       console.log(`Name required for ${email}`);
       return res.json({
@@ -105,79 +84,6 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-  }
-};
-
-
-// @desc Add User by admin
-const addUserByAdmin = async (req, res) => {
-  try {
-    const { name, email, phone, address, position } = req.body;
-
-    // Check if email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email is already in use" });
-    }
-
-    // Generate a random password
-    const generatedPassword = crypto.randomBytes(6).toString("hex");
-    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
-
-    // Create a new user
-    const newUser = await User.create({
-      username: name, // Ensure this is stored correctly
-      email,
-      phoneNumber: phone,
-      address,
-      position,
-      password: hashedPassword,
-      roles: ["User"], // Default role
-      verified: true, // Auto-verify user
-    });
-
-    // Send notification email with login details
-    const userEmailMessage = `Hello ${name},
-
-    You have been added to Kadan Kadan by an admin.
-
-    Here are your login details:
-
-    - Email: ${email}
-    - Password: ${generatedPassword}
-
-    Please log in using the credentials above and change your password from the profile section after logging in for security purposes.
-
-    If you have any questions, feel free to contact support.
-
-    Best regards,
-    Operational Team`;
-
-    const superAdminEmailMessage = `Hello Super Admin,
-
-    A new user has been added to the platform by an admin. Below are the details:
-
-    - Name: ${name}
-    - Email: ${email}
-    - Phone: ${phone}
-    - Position: ${position}
-    - Address: ${address}
-
-    Please review if necessary.
-
-    Best regards,
-    Operational Team`;
-
-    await sendTemplateEmail(email, userEmailMessage, "Welcome to Kadan Kadan");
-    await sendTemplateEmail("dev@kadankadan.com", superAdminEmailMessage, "New User Added by Admin");
-
-    return res.status(201).json({
-      message: "User added successfully",
-      userId: newUser._id,
-    });
-  } catch (error) {
-    console.error("Error adding user:", error);
-    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -421,176 +327,7 @@ const refresh = (req, res) => {
   );
 };
 
-// Function to read the HTML file
-const readHtmlFile = (filePath) => {
-  return new Promise((resolve, reject) => {
-    fs.readFile(filePath, { encoding: "utf-8" }, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-};
 
-// @desc Verify Email using LINK
-// @route GET /auth/verifyemail
-const verifyEmail = async (req, res) => {
-  const { token } = req.query;
-
-  try {
-    // Find the token in the database
-    const tokenDoc = await Token.findOne({ token, purpose: "email" }).exec();
-
-    if (!tokenDoc) {
-      console.log("Invalid or expired verification token");
-      return res
-        .status(400)
-        .json({ message: "Invalid or expired verification token" });
-    }
-
-    // Check if the token has expired
-    if (tokenDoc.expiresAt <= new Date()) {
-      // Token has expired
-      await tokenDoc.deleteOne(); // Remove the expired token
-      console.log("Verification token has expired");
-      return res
-        .status(400)
-        .json({ message: "Verification token has expired" });
-    }
-
-    // Update the user to 'verified: true'
-    const updatedUser = await User.findOneAndUpdate(
-      { email: tokenDoc.email },
-      { verified: true },
-      { new: true }
-    ).exec();
-
-    // Remove the token as it's no longer needed
-    await tokenDoc.deleteOne();
-
-    // Read the HTML file
-    const htmlFilePath = path.join(__dirname, "../views/VerifiedEmail.html");
-    const htmlContent = await readHtmlFile(htmlFilePath);
-
-    // Replace placeholders in the HTML content
-    const finalHtml = htmlContent.replace("{USER_EMAIL}", updatedUser.email);
-
-    // Send the HTML file as a response
-    res.send(finalHtml);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error", success: false });
-  }
-};
-
-// @desc Verify Email using OTP
-// @route POST /auth/verifyotp
-const VerifyOTP = async (req, res) => {
-  const { email, OTP } = req.body;
-
-  try {
-    // Find the token associated with the user's email and purpose
-    const token = await Token.findOne({ email, purpose: "email" }).exec();
-
-    if (!token) {
-      // Token not found
-      console.log("Token not found");
-      return res
-        .status(404)
-        .json({ message: "Token not found", success: false });
-    }
-
-    // Check if the user is already verified
-    const user = await User.findOne({ email, verified: true }).exec();
-    if (user) {
-      console.log("User is already verified");
-      return res
-        .status(200)
-        .json({ message: "User is already verified", success: true, user });
-    }
-
-    // Check if the token has expired
-    if (token.expiresAt <= new Date()) {
-      // Token has expired
-      await token.deleteOne(); // Remove the expired token
-      console.log("Token has expired");
-      return res
-        .status(401)
-        .json({ message: "Token has expired", success: false });
-    }
-
-    // Check if the provided OTP matches the token's OTP
-    if (token.token !== OTP) {
-      // Incorrect OTP
-      console.log("Incorrect OTP");
-      return res.status(401).json({ message: "Incorrect OTP", success: false });
-    }
-
-    // Update the user to 'verified: true'
-    const updatedUser = await User.findOneAndUpdate(
-      { email },
-      { verified: true },
-      { new: true }
-    ).exec();
-
-    // Remove the token as it's no longer needed
-    await token.deleteOne();
-
-    // Respond with success message and updated user
-    console.log(`Email ${email} has been verified`);
-    return res.status(200).json({
-      message: "Email verification successful",
-      success: true,
-      user: updatedUser,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error", success: false });
-  }
-};
-
-// @desc Create New Email Verification Link
-// @route POST /auth/createnewlink
-const createNewLink = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // Check if there is an existing token with the user's email
-    const existingToken = await Token.findOne({ email }).exec();
-
-    if (existingToken) {
-      // Update the existing token with a new OTP
-      const newOTP = generateRandomToken();
-      existingToken.token = newOTP;
-      await existingToken.save();
-      await sendVerificationEmail(existingToken.email, newOTP);
-      console.log(existingToken);
-      return res.status(200).json({ message: "Link updated successfully" });
-    } else {
-      // Create a new OTP
-      const newOTP = generateRandomToken();
-
-      // Create a new token with the userId and the new OTP
-      const newToken = await Token.create({
-        email: email,
-        token: newOTP,
-        purpose: "email",
-      });
-
-      // Send OTP email to the user
-      await sendVerificationEmail(email, newOTP);
-      console.log(newToken);
-      return res
-        .status(200)
-        .json({ message: "New Email Verification Link created successfully" });
-    }
-  } catch (error) {
-    console.error("Error creating new OTP:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 
 // @desc Create New OTP
 // @route POST /auth/createnewotp
@@ -635,172 +372,6 @@ const createNewOTP = async (req, res) => {
   }
 };
 
-// @desc Send OTP for password reset
-// @route POST /auth/forgotpassword/sendotp
-// @access Public
-const sendForgotPasswordOTP = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    // Check if the user exists
-    const user = await User.findOne({ email }).exec();
-
-    if (!user || !user.active) {
-      console.log(`User not found with ${email} email`);
-      return res.status(401).json({ error: "User not found", success: false });
-    }
-
-    // Check if there is an existing token with the user's email and purpose 'forgotpassword'
-    const existingToken = await Token.findOne({
-      email,
-      purpose: "forgotpassword",
-    }).exec();
-
-    if (existingToken) {
-      // Update the existing token with a new OTP
-      const newOTP = generateRandomToken();
-      existingToken.token = newOTP;
-      await existingToken.save();
-      await sendOTPEmail(existingToken.email, newOTP);
-      console.log(existingToken);
-      return res
-        .status(200)
-        .json({ message: "OTP updated successfully", success: true });
-    } else {
-      // Create a new OTP
-      const newOTP = generateRandomToken();
-
-      // Create a new token with the email, the new OTP, and purpose 'forgotpassword'
-      const newToken = await Token.create({
-        email: email,
-        token: newOTP,
-        purpose: "forgotpassword",
-      });
-
-      // Send OTP email to the user
-      await sendOTPEmail(email, newOTP);
-      console.log(newToken);
-      return res
-        .status(200)
-        .json({ message: "OTP sent successfully", success: true });
-    }
-  } catch (error) {
-    console.error("Error sending OTP:", error);
-    console.error(error.stack); // Log the stack trace
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", success: false });
-  }
-};
-
-// @desc Verify OTP for password reset
-// @route POST /auth/forgotpassword/verifyotp
-// @access Public
-const verifyForgotPasswordOTP = async (req, res) => {
-  const { email, OTP } = req.body;
-
-  try {
-    // Find the token associated with the user's email and purpose 'forgotpassword'
-    const token = await Token.findOne({
-      email,
-      purpose: "forgotpassword",
-    }).exec();
-
-    if (!token) {
-      // Token not found
-      console.log("Token not found");
-      return res
-        .status(404)
-        .json({ message: "Token not found", success: false });
-    }
-
-    // Check if the token has expired
-    if (token.expiresAt <= new Date()) {
-      // Token has expired
-      await token.deleteOne(); // Remove the expired token
-      console.log("Token has expired");
-      return res
-        .status(401)
-        .json({ message: "Token has expired", success: false });
-    }
-
-    // Check if the provided OTP matches the token's OTP
-    if (token.token !== OTP) {
-      // Incorrect OTP
-      console.log("Incorrect OTP");
-      return res.status(401).json({ message: "Incorrect OTP", success: false });
-    }
-
-    // Respond with success message
-    console.log(`OTP for password reset verified`);
-    res
-      .status(200)
-      .json({ message: "OTP verification successful", success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error", success: false });
-  }
-};
-
-// @desc Reset password
-// @route POST /auth/forgotpassword/reset
-// @access Public
-const resetPassword = async (req, res) => {
-  const { email, OTP, password } = req.body;
-
-  try {
-    // Find the token associated with the user's email and purpose 'forgotpassword'
-    const token = await Token.findOne({
-      email,
-      purpose: "forgotpassword",
-    }).exec();
-
-    if (!token) {
-      // Token not found
-      console.log("Token not found");
-      return res
-        .status(404)
-        .json({ message: "Token not found", success: false });
-    }
-
-    // Check if the token has expired
-    if (token.expiresAt <= new Date()) {
-      // Token has expired
-      await token.deleteOne(); // Remove the expired token
-      console.log("Token has expired");
-      return res
-        .status(401)
-        .json({ message: "Token has expired", success: false });
-    }
-
-    // Check if the provided OTP matches the token's OTP
-    if (token.token !== OTP) {
-      // Incorrect OTP
-      console.log("Incorrect OTP");
-      return res.status(401).json({ message: "Incorrect OTP", success: false });
-    }
-
-    // Update the user's password
-    const hashedPassword = await hashPassword(password);
-    await User.findOneAndUpdate(
-      { email },
-      { password: hashedPassword },
-      { new: true }
-    ).exec();
-
-    // Remove the token as it's no longer needed
-    await token.deleteOne();
-
-    // Respond with success message
-    console.log(`Password reset successful`);
-    res
-      .status(200)
-      .json({ message: "Password reset successful", success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error", success: false });
-  }
-};
 
 // @desc Logout
 // @route POST /auth/logout
@@ -1246,19 +817,12 @@ const googleLogin = async (req, res) => {
 module.exports = {
   sendLoginCode,
   verifyLoginCode,
-  verifyEmail,
   refresh,
   createNewOTP,
-  VerifyOTP,
-  sendForgotPasswordOTP,
-  verifyForgotPasswordOTP,
-  resetPassword,
-  createNewLink,
   register,
   logout,
   updateUser,
   deleteUser,
-  addUserByAdmin,
   sendPhoneVerificationCode,
   verifyPhoneCode,
   completeSignup,

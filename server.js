@@ -18,9 +18,10 @@ connectDB();
 
 mongoose.connection.once("open", () => {
     console.log("Connected to MongoDB");
-
-    // Start the server after the DB connection is open
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    if (require.main === module) {
+        // Start the server after the DB connection is open
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    }
 });
 
 mongoose.connection.on("error", (err) => {
@@ -43,6 +44,7 @@ app.use(cookieParser());
 
 // Routes
 app.use("/auth", require("./routes/authRoutes"));
+app.use("/listings", require("./routes/listingsRoutes"));
 
 // 404 Handler
 app.all("*", (req, res) => {
@@ -51,3 +53,5 @@ app.all("*", (req, res) => {
 
 // Error Handler
 app.use(errorHandler);
+
+module.exports = app;
