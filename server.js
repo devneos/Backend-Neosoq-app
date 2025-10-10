@@ -13,24 +13,25 @@ const connectDB = require("./config/dbConn");
 const mongoose = require("mongoose");
 const PORT = process.env.PORT || 3500;
 
-// Connect to MongoDB
-connectDB();
+// Only connect to MongoDB and start listening when running server directly.
+if (require.main === module) {
+  // Connect to MongoDB and start the app
+  connectDB();
 
-mongoose.connection.once("open", () => {
-    console.log("Connected to MongoDB");
-    if (require.main === module) {
-        // Start the server after the DB connection is open
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    }
-});
+  mongoose.connection.once("open", () => {
+      console.log("Connected to MongoDB");
+      // Start the server after the DB connection is open
+      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  });
 
-mongoose.connection.on("error", (err) => {
-    console.log(err);
-    logEvents(
-        `${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`,
-        "mongoErrLog.log"
-    );
-});
+  mongoose.connection.on("error", (err) => {
+      console.log(err);
+      logEvents(
+          `${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`,
+          "mongoErrLog.log"
+      );
+  });
+}
 
 // Middleware
 app.use(logger);

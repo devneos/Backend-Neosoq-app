@@ -17,10 +17,6 @@ router.route("/google").post(authController.googleLogin);
 
 router.route("/logout").post(authController.logout);
 
-router.route("/update").patch(authController.updateUser);
-
-router.route("/delete").delete(authController.deleteUser);
-
 // Phone-based signup routes
 router.route("/send-phone-code").post(authController.sendPhoneVerificationCode);
 router.route("/verify-phone-code").post(authController.verifyPhoneCode);

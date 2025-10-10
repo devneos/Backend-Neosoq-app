@@ -11,6 +11,7 @@ try {
 const path = require('path');
 const fs = require('fs');
 const { createListing } = require('../controllers/listingsController');
+const verifyJWT = require('../middleware/verifyJWT');
 
 // ensure uploads dir exists
 const uploadDir = path.join(__dirname, '..', 'uploads', 'listings');
@@ -31,7 +32,8 @@ const storage = multer ? multer.diskStorage({
 const upload = multer ? multer({ storage }).array('files', 10) : null;
 
 // POST /listings
-router.post('/', (req, res, next) => {
+// Protect the route so we can attach listings to the creating user
+router.post('/', verifyJWT, (req, res, next) => {
   if (!multer) return res.status(500).json({ error: 'multer is not installed on the server' });
   upload(req, res, function (err) {
     if (err) return res.status(400).json({ error: err.message });

@@ -3,13 +3,22 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 
 let mongoServer;
 
-module.exports = async () => {
-  // Start in-memory mongo
+beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
-
   await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-
-  // Expose stop function
   global.__MONGOSERVER__ = mongoServer;
-};
+});
+
+afterAll(async () => {
+  if (mongoose.connection.readyState) await mongoose.disconnect();
+  if (mongoServer) await mongoServer.stop();
+});
+
+beforeEach(async () => {
+  // ensure collections cleared between tests
+  const { collections } = mongoose.connection;
+  for (const key in collections) {
+    await collections[key].deleteMany({});
+  }
+});
