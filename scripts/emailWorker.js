@@ -6,14 +6,18 @@ const processJob = async (item) => {
   const { job } = item;
   if (job.type === 'listing_email') {
     try {
-      // prepare attachments: prefer urlSrc (no attachment) but include local paths if present
-      const attachments = (job.files || []).map(f => ({ filename: f.originalname, path: f.path })).filter(a => a.path);
-      if (attachments.length) {
-        await sendTemplateEmailWithAttachment(job.to, job.message, job.subject, attachments[0]);
-      } else {
-        // fallback to simple templated email without attachment
-        await sendTemplateEmailWithAttachment(job.to, job.message, job.subject, null);
+      // normalize first file (if any) into { path, originalname, urlSrc, buffer }
+      let fileObj = null;
+      if (Array.isArray(job.files) && job.files.length) {
+        const f = job.files[0];
+        fileObj = {
+          originalname: f.originalname || f.filename,
+          path: f.path || null,
+          urlSrc: f.urlSrc || null,
+          buffer: f.buffer || null,
+        };
       }
+      await sendTemplateEmailWithAttachment(job.to, job.message, job.subject, fileObj);
       console.log('Processed job', item.id);
     } catch (e) {
       console.error('Failed to process job', item.id, e);

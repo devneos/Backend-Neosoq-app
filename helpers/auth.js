@@ -2,8 +2,24 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
 
-// Initialize Twilio client
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+// Initialize Twilio client only when credentials are present.
+// Some environments (like CI or this local worker run) may not set TWILIO_ env vars.
+// Avoid throwing during module load by lazily guarding initialization.
+let client = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  try {
+    client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  } catch (err) {
+    // If Twilio SDK throws for any reason, keep client null and log the error.
+    // The rest of the app (emails, queue worker) should continue to work.
+    // eslint-disable-next-line no-console
+    console.warn("Twilio initialization failed:", err && err.message ? err.message : err);
+    client = null;
+  }
+} else {
+  // eslint-disable-next-line no-console
+  console.info("Twilio credentials not set; SMS functionality disabled.");
+}
 
 const sendOTPEmail = async (email, token) => {
   try {
@@ -1084,15 +1100,21 @@ const sendTemplateEmail = async (email, message, header, attachments) => {
     throw error;
   }
 };
+const ensureTransporter = () => {
+  // Create nodemailer transporter only when SMTP creds are present.
+  if (!process.env.SENDER_EMAIL || !process.env.APP_PASSWORD) return null;
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.SENDER_EMAIL,
+      pass: process.env.APP_PASSWORD,
+    },
+  });
+};
+
 const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
   try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    const transporter = ensureTransporter();
 
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -1529,22 +1551,47 @@ const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
 </html>
 `;
 
+    const attachments = [];
+    // file may be null, { path, originalname }, { urlSrc }, or { buffer, originalname }
+    if (file) {
+      if (file.path) {
+        attachments.push({ filename: file.originalname || path.basename(file.path), path: file.path });
+      } else if (file.urlSrc) {
+        // If it's a remote URL, nodemailer will attach by URL only with certain transports.
+        // As a fallback we'll include the URL in the email body instead of attaching.
+      } else if (file.buffer) {
+        attachments.push({ filename: file.originalname || 'attachment', content: file.buffer });
+      }
+    }
+
     const mailOptions = {
-      from: `Kadan Kadan"${process.env.SENDER_EMAIL}"`,
+      from: process.env.SENDER_EMAIL ? `Kadan Kadan <${process.env.SENDER_EMAIL}>` : 'no-reply@neosoq.local',
       to: to,
       subject: subject,
-      html: htmlTemplate,
-      attachments: [
-        {
-          filename: file.originalname,
-          content: file.buffer,
-        },
-      ],
+      html: htmlTemplate + (file && file.urlSrc ? `<p>File URL: <a href="${file.urlSrc}">${file.urlSrc}</a></p>` : ''),
+      attachments: attachments.length ? attachments : undefined,
     };
+
+    if (!transporter) {
+      // No SMTP credentials — write the email to a log for development and return as if sent.
+      const logsDir = path.join(__dirname, '..', 'logs');
+      try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
+      const logEntry = {
+        at: new Date().toISOString(),
+        to,
+        subject,
+        message,
+        mailOptions,
+      };
+      const logFile = path.join(logsDir, 'email_worker.log');
+      require('fs').appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+      console.info('SMTP credentials not set — logged email to', logFile);
+      return subject;
+    }
 
     const result = await transporter.sendMail(mailOptions);
 
-    console.log("Email sent:", result);
+    console.log('Email sent:', result && result.messageId ? result.messageId : result);
 
     return subject;
   } catch (error) {
