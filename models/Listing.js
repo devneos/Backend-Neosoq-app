@@ -9,17 +9,37 @@ const FileSchema = new mongoose.Schema({
   urlSrc: String,
 }, { _id: false });
 
+const LocalizedString = new mongoose.Schema({
+  en: { type: String, default: '' },
+  ar: { type: String, default: '' },
+}, { _id: false });
+
 const ListingSchema = new mongoose.Schema({
   category: { type: String, required: true },
   subCategory: { type: String },
-  title: { type: String, required: true },
-  description: { type: String },
-  price: { type: String },
+  title: { type: LocalizedString, required: true },
+  description: { type: LocalizedString },
+  price: { type: Number },
   quantity: { type: Number, default: 1 },
   condition: { type: String },
   files: [FileSchema],
+  images: [String], // image URLs
   reviewCompleted: { type: Boolean, default: false },
+  status: { type: String, enum: ['open', 'closed'], default: 'open' },
+  isPromoted: { type: Boolean, default: false },
+  likesCount: { type: Number, default: 0 },
+  sellerRating: { type: Number, default: 5.0 },
+  sellerType: { type: String, default: 'seller' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
+
+// virtual for offers count can be populated with aggregation or separate query
+ListingSchema.virtual('offersCount').get(function () {
+  // placeholder; actual count should be populated via aggregation in controller
+  return this._offersCount || 0;
+});
+
+ListingSchema.set('toJSON', { virtuals: true });
+ListingSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Listing', ListingSchema);

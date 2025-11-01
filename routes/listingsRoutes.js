@@ -10,7 +10,7 @@ try {
 }
 const path = require('path');
 const fs = require('fs');
-const { createListing } = require('../controllers/listingsController');
+const { createListing, getListing, listListings, updateListing, deleteListing } = require('../controllers/listingsController');
 const verifyJWT = require('../middleware/verifyJWT');
 
 // ensure uploads dir exists
@@ -33,12 +33,29 @@ const upload = multer ? multer({ storage }).array('files', 10) : null;
 
 // POST /listings
 // Protect the route so we can attach listings to the creating user
+// Create a listing
 router.post('/', verifyJWT, (req, res, next) => {
   if (!multer) return res.status(500).json({ error: 'multer is not installed on the server' });
   upload(req, res, function (err) {
     if (err) return res.status(400).json({ error: err.message });
     return createListing(req, res, next);
   });
+});
+
+// Search & list
+router.get('/', listListings);
+
+// Get single
+router.get('/:id', getListing);
+
+// Update
+router.put('/:id', verifyJWT, (req, res, next) => {
+  return updateListing(req, res, next);
+});
+
+// Delete
+router.delete('/:id', verifyJWT, (req, res, next) => {
+  return deleteListing(req, res, next);
 });
 
 module.exports = router;

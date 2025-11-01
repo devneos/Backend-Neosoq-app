@@ -46,6 +46,10 @@ app.use(cookieParser());
 // Routes
 app.use("/auth", require("./routes/authRoutes"));
 app.use("/listings", require("./routes/listingsRoutes"));
+app.use("/offers", require("./routes/offersRoutes"));
+app.use("/requests", require("./routes/requestsRoutes"));
+app.use("/reviews", require("./routes/reviewsRoutes"));
+app.use("/disputes", require("./routes/disputesRoutes"));
 
 // 404 Handler
 app.all("*", (req, res) => {

@@ -59,6 +59,18 @@ const UserSchema = new Schema({
     type: String,
     required: false, // No longer required for phone-based auth
   },
+  // Aggregate rating fields
+  rating: { type: Number, default: 5.0 },
+  ratingCount: { type: Number, default: 0 },
+  // Seller type and location info
+  sellerType: { type: String, default: 'seller' },
+  location: {
+    area: String,
+    addressLine: String,
+    city: String,
+    state: String,
+    country: String,
+  },
 });
 
 const UserModel = mongoose.model("User", UserSchema);
