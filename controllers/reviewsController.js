@@ -1,5 +1,6 @@
 const Review = require('../models/Review');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 
 // Create review and update user's aggregate rating
 const createReview = async (req, res) => {
@@ -8,8 +9,9 @@ const createReview = async (req, res) => {
     if (!reviewedUserId || !rating) return res.status(400).json({ error: 'reviewedUserId and rating required' });
     const review = await Review.create({ reviewerId: req.user?.id, reviewedUserId, rating: Number(rating), text });
     // Recalculate avg rating
+    const ObjectId = mongoose.Types.ObjectId;
     const agg = await Review.aggregate([
-      { $match: { reviewedUserId: require('mongoose').Types.ObjectId(reviewedUserId) } },
+      { $match: { reviewedUserId: new ObjectId(reviewedUserId) } },
       { $group: { _id: '$reviewedUserId', avg: { $avg: '$rating' }, count: { $sum: 1 } } }
     ]);
     if (agg && agg[0]) {

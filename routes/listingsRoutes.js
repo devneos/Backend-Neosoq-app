@@ -49,8 +49,13 @@ router.get('/', listListings);
 router.get('/:id', getListing);
 
 // Update
+// Allow multipart on update so clients can remove some files and upload new ones
 router.put('/:id', verifyJWT, (req, res, next) => {
-  return updateListing(req, res, next);
+  if (!multer) return res.status(500).json({ error: 'multer is not installed on the server' });
+  upload(req, res, function (err) {
+    if (err) return res.status(400).json({ error: err.message });
+    return updateListing(req, res, next);
+  });
 });
 
 // Delete

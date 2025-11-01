@@ -14,8 +14,10 @@ const RequestSchema = new mongoose.Schema({
   files: [{ filename: String, url: String }],
   images: [String],
   isPromoted: { type: Boolean, default: false },
-  status: { type: String, enum: ['open','closed'], default: 'open' },
+  status: { type: String, enum: ['open','closed','awarded'], default: 'open' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  awardedOffer: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
+  awardedAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Request', RequestSchema);

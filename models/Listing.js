@@ -25,12 +25,14 @@ const ListingSchema = new mongoose.Schema({
   files: [FileSchema],
   images: [String], // image URLs
   reviewCompleted: { type: Boolean, default: false },
-  status: { type: String, enum: ['open', 'closed'], default: 'open' },
+  status: { type: String, enum: ['open', 'closed', 'awarded'], default: 'open' },
   isPromoted: { type: Boolean, default: false },
   likesCount: { type: Number, default: 0 },
   sellerRating: { type: Number, default: 5.0 },
   sellerType: { type: String, default: 'seller' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  awardedOffer: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
+  awardedAt: { type: Date },
 }, { timestamps: true });
 
 // virtual for offers count can be populated with aggregation or separate query

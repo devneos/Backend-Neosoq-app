@@ -9,7 +9,25 @@ const createOffer = async (req, res) => {
     if (!listingId && !requestId) return res.status(400).json({ error: 'listingId or requestId required' });
     if (!price) return res.status(400).json({ error: 'price required' });
 
-    const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), proposalText });
+    // handle file attachments if present in req.files (multer)
+    const files = req.files || [];
+    const fileDocs = [];
+    if (files.length) {
+      const { uploadFile } = require('../helpers/cloudinary');
+      for (const f of files) {
+        try {
+          const uploadRes = await uploadFile(f.path, { public_id: `offers/${Date.now()}-${f.originalname.replace(/\s+/g,'-')}` });
+          const url = uploadRes && uploadRes.url ? uploadRes.url : null;
+          const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
+          fileDocs.push({ filename: f.filename || f.originalname, url, publicId });
+        } catch (e) {
+          console.error('Offer file upload failed', e.message || e);
+        }
+        try { require('fs').unlinkSync(f.path); } catch (e) {}
+      }
+    }
+
+    const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), proposalText, files: fileDocs });
     const payload = offer.toObject();
     payload.timeAgo = timeAgo(offer.createdAt);
     return res.status(201).json({ offer: payload });
@@ -25,7 +43,46 @@ const updateOffer = async (req, res) => {
     const offer = await Offer.findById(id);
     if (!offer) return res.status(404).json({ error: 'Not found' });
     if (String(offer.userId) !== String(req.user?.id)) return res.status(403).json({ error: 'Not allowed' });
-    Object.assign(offer, req.body);
+    const data = req.body || {};
+
+    // handle removed files
+    let removed = data.removedFiles || data.removed || null;
+    if (removed) {
+      if (typeof removed === 'string') {
+        try { removed = JSON.parse(removed); } catch (e) { removed = removed.split(',').map(s => s.trim()).filter(Boolean); }
+      }
+      if (Array.isArray(removed) && removed.length) {
+        // attempt remote deletion when publicId exists
+        const { destroyFile } = require('../helpers/cloudinary');
+        for (const r of removed) {
+          const match = offer.files.find(f => f.url === r || f.filename === r);
+          if (match && match.publicId) {
+            try { await destroyFile(match.publicId); } catch (e) { /* ignore */ }
+          }
+        }
+        offer.files = offer.files.filter(f => !removed.includes(f.url) && !removed.includes(f.filename));
+      }
+    }
+
+    // handle newly uploaded files (req.files) similar to createOffer
+    const files = req.files || [];
+    if (files.length) {
+      const { uploadFile } = require('../helpers/cloudinary');
+      for (const f of files) {
+        try {
+          const uploadRes = await uploadFile(f.path, { public_id: `offers/${Date.now()}-${f.originalname.replace(/\s+/g,'-')}` });
+          const url = uploadRes && uploadRes.url ? uploadRes.url : null;
+          const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
+          offer.files.push({ filename: f.filename || f.originalname, url, publicId });
+        } catch (e) {
+          console.error('Offer file upload failed', e && e.message);
+        }
+        try { require('fs').unlinkSync(f.path); } catch (e) {}
+      }
+    }
+
+    // apply other updates
+    Object.keys(data).forEach(k => { if (!['removedFiles','removed','files'].includes(k)) offer[k] = data[k]; });
     await offer.save();
     return res.json({ offer });
   } catch (e) {
@@ -65,8 +122,15 @@ const acceptOffer = async (req, res) => {
       if (!request) return res.status(404).json({ error: 'Request not found' });
       if (String(request.createdBy) !== String(req.user?.id)) return res.status(403).json({ error: 'Not allowed' });
     }
-    offer.status = 'accepted';
-    await offer.save();
+      offer.status = 'accepted';
+      await offer.save();
+      // mark the listing/request as awarded
+      if (offer.listingId) {
+        await Listing.findByIdAndUpdate(offer.listingId, { status: 'awarded', awardedOffer: offer._id, awardedAt: new Date() });
+      }
+      if (offer.requestId) {
+        await Request.findByIdAndUpdate(offer.requestId, { status: 'awarded', awardedOffer: offer._id, awardedAt: new Date() });
+      }
     return res.json({ offer });
   } catch (e) {
     console.error('acceptOffer', e);

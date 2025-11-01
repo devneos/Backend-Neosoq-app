@@ -44,14 +44,16 @@ const createListing = async (req, res) => {
     const fileDocs = [];
     const images = [];
     for (const f of files) {
-      let url = null;
+      let uploadRes = null;
       try {
-        url = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
+        uploadRes = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
       } catch (err) {
         console.error('Cloudinary upload failed for', f.originalname, err.message || err);
       }
+      const url = uploadRes && uploadRes.url ? uploadRes.url : null;
+      const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
       if (f.mimetype && f.mimetype.startsWith('image') && url) images.push(url);
-      fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url });
+      fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId });
       // remove local file after upload attempt
       try { fs.unlinkSync(f.path); } catch (e) {}
     }
@@ -151,13 +153,23 @@ const listListings = async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    const docs = await Listing.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
-    // populate seller info for each
+  const totalCount = await Listing.countDocuments(q);
+  const docs = await Listing.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    // populate seller info for each and aggregate offer counts in bulk
     const User = require('../models/User');
     const out = [];
+    const ids = docs.map(d => d._id);
+    let countsMap = {};
+    if (ids.length) {
+      const agg = await Offer.aggregate([
+        { $match: { listingId: { $in: ids } } },
+        { $group: { _id: '$listingId', count: { $sum: 1 } } }
+      ]);
+      countsMap = agg.reduce((acc, cur) => { acc[String(cur._id)] = cur.count; return acc; }, {});
+    }
     for (const doc of docs) {
       const seller = doc.createdBy ? await User.findById(doc.createdBy).select('username profileImage roles position country region rating ratingCount sellerType').lean() : null;
-      const offersCount = await Offer.countDocuments({ listingId: doc._id });
+      const offersCount = countsMap[String(doc._id)] || 0;
       out.push({
         ...doc,
         title: (doc.title && doc.title[lang]) ? doc.title[lang] : (doc.title && doc.title.en) || '',
@@ -168,26 +180,83 @@ const listListings = async (req, res) => {
       });
     }
 
-    return res.json({ listings: out, page: Number(page), limit: Number(limit) });
+  const totalPages = Math.ceil(totalCount / Number(limit));
+  return res.json({ listings: out, page: Number(page), limit: Number(limit), totalCount, totalPages });
   } catch (e) {
     console.error('listListings', e);
     return res.status(500).json({ error: 'Failed to query listings' });
   }
 };
 
-// Update listing
+// Update listing - supports removing existing files and adding new uploads
 const updateListing = async (req, res) => {
   try {
     const id = req.params.id;
-    const data = req.body;
-    // Accept localized input
+    const data = req.body || {};
     if (data.title) data.title = await ensureLocalized(data.title);
     if (data.description) data.description = await ensureLocalized(data.description);
 
-    const listing = await Listing.findByIdAndUpdate(id, data, { new: true }).lean();
-    if (!listing) return res.status(404).json({ error: 'Not found' });
-    listing.timeAgo = timeAgo(listing.updatedAt);
-    return res.json({ listing });
+  const listing = await Listing.findById(id);
+  // ownership check
+  if (!listing) return res.status(404).json({ error: 'Not found' });
+  if (String(listing.createdBy) !== String(req.user?.id)) return res.status(403).json({ error: 'Not allowed' });
+
+    // handle removed files passed by client (removedFiles can be JSON string or array)
+    let removed = data.removedFiles || data.removed || null;
+    if (removed) {
+      if (typeof removed === 'string') {
+        try { removed = JSON.parse(removed); } catch (e) { removed = removed.split(',').map(s => s.trim()).filter(Boolean); }
+      }
+      if (Array.isArray(removed) && removed.length) {
+        // attempt remote deletion when publicId exists
+        const { destroyFile } = require('../helpers/cloudinary');
+        for (const r of removed) {
+          const match = listing.files.find(f => f.urlSrc === r || f.filename === r || f.originalname === r);
+          if (match && match.publicId) {
+            try { await destroyFile(match.publicId); } catch (e) { /* ignore */ }
+          }
+        }
+        listing.files = listing.files.filter(f => !removed.includes(f.urlSrc) && !removed.includes(f.filename) && !removed.includes(f.originalname));
+        listing.images = listing.images.filter(img => !removed.includes(img));
+      }
+    }
+
+    // validate and upload newly attached files in req.files
+    const files = req.files || [];
+    for (const f of files) {
+      if (!ALLOWED.includes(f.mimetype)) {
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(400).json({ error: 'Invalid file type' });
+      }
+      if (f.size > MAX_BYTES) {
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
+      }
+    }
+    if (files.length) {
+      for (const f of files) {
+        let url = null;
+        try {
+          url = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
+        } catch (err) {
+          console.error('Cloudinary upload failed for', f.originalname, err && err.message);
+        }
+        if (f.mimetype && f.mimetype.startsWith('image') && url) listing.images.push(url);
+        listing.files.push({ filename: f.filename || f.originalname, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url });
+        try { fs.unlinkSync(f.path); } catch (e) {}
+      }
+    }
+
+    // apply other updates from data
+    Object.keys(data).forEach(k => {
+      if (['removedFiles','removed','files'].includes(k)) return;
+      listing[k] = data[k];
+    });
+
+    await listing.save();
+    const out = listing.toObject();
+    out.timeAgo = timeAgo(listing.updatedAt);
+    return res.json({ listing: out });
   } catch (e) {
     console.error('updateListing', e);
     return res.status(500).json({ error: 'Failed to update listing' });
@@ -198,6 +267,14 @@ const updateListing = async (req, res) => {
 const deleteListing = async (req, res) => {
   try {
     const id = req.params.id;
+    const listing = await Listing.findById(id);
+    if (!listing) return res.status(404).json({ error: 'Not found' });
+    if (String(listing.createdBy) !== String(req.user?.id)) return res.status(403).json({ error: 'Not allowed' });
+    // optionally delete remote assets
+    const { destroyFile } = require('../helpers/cloudinary');
+    for (const f of (listing.files || [])) {
+      if (f.publicId) { try { await destroyFile(f.publicId); } catch (e) { /* ignore */ } }
+    }
     await Listing.findByIdAndDelete(id);
     return res.json({ success: true });
   } catch (e) {
