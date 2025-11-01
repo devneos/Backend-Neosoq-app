@@ -13,7 +13,15 @@ const verifyJWT = (req, res, next) => {
         token,
         process.env.ACCESS_TOKEN_SECRET,
         (err, decoded) => {
-            if (err) return res.status(403).json({ message: 'Forbidden' })
+            if (err) {
+                // Provide more specific feedback in development to help debugging
+                if (process.env.NODE_ENV !== 'production') {
+                    console.error('JWT verification error:', err && err.message ? err.message : err)
+                }
+                // Map token errors to appropriate status codes
+                if (err.name === 'TokenExpiredError') return res.status(401).json({ message: 'Access token expired' })
+                return res.status(403).json({ message: 'Forbidden' })
+            }
             // decoded.UserInfo contains the claims we set when issuing the token.
             // Normalize req.user as an object so callers can read req.user.id
             const ui = decoded.UserInfo || {};

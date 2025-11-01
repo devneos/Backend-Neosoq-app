@@ -29,7 +29,11 @@ const storage = multer ? multer.diskStorage({
   }
 }) : null;
 
-const upload = multer ? multer({ storage }).array('files', 10) : null;
+// Accept up to 10 files under any field name (controllers read `req.files`).
+// Using `.any()` avoids Multer throwing "Unexpected field" when clients use
+// `images`, `files`, or other names. The controller will decide how to treat
+// the uploaded files.
+const upload = multer ? multer({ storage }).any() : null;
 
 // POST /listings
 // Protect the route so we can attach listings to the creating user

@@ -263,8 +263,10 @@ const verifyLoginCode = async (req, res) => {
     // Delete the verification token
     await token.deleteOne();
 
+    // Return access and refresh tokens in the response body for mobile clients
     res.json({ 
       accessToken,
+      refreshToken,
       user: {
         id: foundUser._id,
         username: foundUser.username,
@@ -341,7 +343,8 @@ const refresh = (req, res) => {
 
         res.cookie("jwt", newRefreshToken, getCookieOptions());
 
-      res.json({ accessToken });
+          // Return new access and refresh tokens so mobile clients can store refreshToken
+          res.json({ accessToken, refreshToken: newRefreshToken });
     }
   );
 };
@@ -680,10 +683,12 @@ const completeSignup = async (req, res) => {
     // Create refresh cookie (options depend on environment)
     res.cookie("jwt", refreshToken, getCookieOptions());
 
+    // Return refreshToken in body for mobile clients that cannot use cookies
     res.status(201).json({
       message: "Signup completed successfully",
       success: true,
       accessToken,
+      refreshToken,
       user: {
         id: newUser._id,
         username: newUser.username,
@@ -798,6 +803,7 @@ const googleLogin = async (req, res) => {
 
     res.json({
       accessToken,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
