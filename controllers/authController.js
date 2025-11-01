@@ -20,6 +20,19 @@ require("dotenv").config();
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
+// Cookie options helper: in production we require Secure + SameSite=None for cross-site
+// flows. For local development (NODE_ENV !== 'production') we relax secure and use
+// SameSite=Lax so browsers accept cookies over HTTP during development.
+const getCookieOptions = () => {
+  const isProd = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: !!isProd,
+    sameSite: isProd ? 'None' : 'Lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+};
+
 // @desc Register
 // @route POST /auth
 // @access Public
@@ -244,13 +257,8 @@ const verifyLoginCode = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Create secure cookie with refresh token
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // Create refresh cookie (options depend on environment)
+    res.cookie("jwt", refreshToken, getCookieOptions());
 
     // Delete the verification token
     await token.deleteOne();
@@ -322,6 +330,17 @@ const refresh = (req, res) => {
         { expiresIn: "15m" }
       );
 
+      // Rotate refresh token: issue a new refresh token cookie so clients
+      // get a fresh cookie on every refresh. This matches the behavior of
+      // other auth flows that set the refresh cookie on login.
+      const newRefreshToken = jwt.sign(
+        { username: foundUser.username },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: "7d" }
+      );
+
+        res.cookie("jwt", newRefreshToken, getCookieOptions());
+
       res.json({ accessToken });
     }
   );
@@ -380,6 +399,14 @@ const logout = (req, res) => {
   const cookies = req.cookies;
   if (!cookies?.jwt) return res.sendStatus(204); //No content
   res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
+  // Use matching clear options for local development vs production
+  // (clearCookie requires the same flags for some clients)
+  try {
+    res.clearCookie('jwt', getCookieOptions());
+  } catch (e) {
+    // Fallback: call clearCookie without options if environment doesn't like the object
+    try { res.clearCookie('jwt'); } catch (_) {}
+  }
   res.json({ message: "Cookie cleared" });
 };
 
@@ -650,13 +677,8 @@ const completeSignup = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Create secure cookie with refresh token
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // Create refresh cookie (options depend on environment)
+    res.cookie("jwt", refreshToken, getCookieOptions());
 
     res.status(201).json({
       message: "Signup completed successfully",
@@ -772,12 +794,7 @@ const googleLogin = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.cookie('jwt', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'None',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('jwt', refreshToken, getCookieOptions());
 
     res.json({
       accessToken,
@@ -817,6 +834,8 @@ module.exports = {
   register,
   logout,
   sendPhoneVerificationCode,
+  // unified handler for sending phone codes (login or signup)
+  sendPhoneCode,
   verifyPhoneCode,
   completeSignup,
   googleLogin,
