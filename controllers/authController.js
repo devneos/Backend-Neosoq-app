@@ -440,6 +440,76 @@ const sendPhoneVerificationCode = async (req, res) => {
   }
 };
 
+// @desc Unified send phone code - handles both registration (new user) and login (existing user)
+// @route POST /auth/login/send-code  (also replaces /auth/send-phone-code)
+// @access Public
+const sendPhoneCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    // Determine if phone belongs to an existing user
+    const existingUser = await User.findOne({ phoneNumber }).exec();
+
+    // Generate verification code
+    const verificationCode = generateRandomToken();
+
+    if (existingUser) {
+      // Existing user -> login flow
+      if (!existingUser.active) {
+        return res.status(403).json({ error: "Your account is suspended. Please contact support." });
+      }
+
+      if (!existingUser.verified) {
+        // If the user exists but is not verified, treat as 'not-verified' login attempt
+        return res.status(402).json({ error: "Your phone number is not verified. Please complete signup first." });
+      }
+
+      // Create or update token with purpose 'login'
+      const existingToken = await Token.findOne({ phoneNumber, purpose: "login" }).exec();
+      if (existingToken) {
+        existingToken.token = verificationCode;
+        existingToken.expiresAt = new Date(Date.now() + 5 * 60000);
+        await existingToken.save();
+      } else {
+        await Token.create({ phoneNumber, token: verificationCode, purpose: "login", expiresAt: new Date(Date.now() + 5 * 60000) });
+      }
+
+      await sendSMS(phoneNumber, verificationCode);
+
+      return res.status(200).json({
+        message: "Login verification code sent successfully",
+        success: true,
+        isNewUser: false
+      });
+    }
+
+    // New user -> registration/phone verification flow
+    const existingPhoneToken = await Token.findOne({ phoneNumber, purpose: "phone" }).exec();
+    if (existingPhoneToken) {
+      existingPhoneToken.token = verificationCode;
+      existingPhoneToken.expiresAt = new Date(Date.now() + 5 * 60000);
+      await existingPhoneToken.save();
+    } else {
+      await Token.create({ phoneNumber, token: verificationCode, purpose: "phone", expiresAt: new Date(Date.now() + 5 * 60000) });
+    }
+
+    await sendSMS(phoneNumber, verificationCode);
+
+    return res.status(200).json({
+      message: "Verification code sent successfully",
+      success: true,
+      isNewUser: true
+    });
+  } catch (error) {
+    console.error("Error sending phone code:", error);
+    return res.status(500).json({ error: "Failed to send verification code", success: false });
+  }
+};
+
 // @desc Verify phone number with code (Step 2)
 // @route POST /auth/verify-phone-code
 // @access Public
