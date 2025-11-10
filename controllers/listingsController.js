@@ -26,36 +26,48 @@ const createListing = async (req, res) => {
     const title = await ensureLocalized(titleInput);
     const description = await ensureLocalized(descriptionInput);
 
-    // Validate files
-    const files = req.files || [];
-    for (const f of files) {
-      if (!ALLOWED.includes(f.mimetype)) {
-        // remove uploaded files
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'Invalid file type' });
-      }
-      if (f.size > MAX_BYTES) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
-      }
+    // Attachments are handled by a dedicated uploads endpoint. After uploading
+    // files via that endpoint clients should pass `files` and/or `images`
+    // metadata in the JSON body (as arrays). Accept either raw arrays or
+    // JSON-encoded strings to maintain compatibility with existing clients.
+    let fileDocs = [];
+    let images = [];
+    if (req.body.files) {
+      try { fileDocs = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files; } catch (e) { fileDocs = req.body.files; }
+    }
+    if (req.body.images) {
+      try { images = typeof req.body.images === 'string' ? JSON.parse(req.body.images) : req.body.images; } catch (e) { images = req.body.images; }
     }
 
-    // Upload images/files to Cloudinary when possible
-    const fileDocs = [];
-    const images = [];
-    for (const f of files) {
-      let uploadRes = null;
-      try {
-        uploadRes = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
-      } catch (err) {
-        console.error('Cloudinary upload failed for', f.originalname, err.message || err);
+    // Backwards-compatible inline multipart handling: if req.files is present
+    // (route used multer), upload them directly and attach to the listing.
+    if (req.files && Array.isArray(req.files) && req.files.length) {
+      const files = req.files;
+      // validate
+      for (const f of files) {
+        if (!ALLOWED.includes(f.mimetype)) {
+          files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+          return res.status(400).json({ error: 'Invalid file type' });
+        }
+        if (f.size > MAX_BYTES) {
+          files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+          return res.status(400).json({ error: 'File too large. Max 10MB per file' });
+        }
       }
-      const url = uploadRes && uploadRes.url ? uploadRes.url : null;
-      const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
-      if (f.mimetype && f.mimetype.startsWith('image') && url) images.push(url);
-      fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId });
-      // remove local file after upload attempt
-      try { fs.unlinkSync(f.path); } catch (e) {}
+
+      for (const f of files) {
+        let uploadRes = null;
+        try {
+          uploadRes = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
+        } catch (err) {
+          console.error('Cloudinary upload failed for', f.originalname, err.message || err);
+        }
+        const url = uploadRes && uploadRes.url ? uploadRes.url : null;
+        const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
+        if (f.mimetype && f.mimetype.startsWith('image') && url) images.push(url);
+        fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId, description: '' });
+        try { fs.unlinkSync(f.path); } catch (e) {}
+      }
     }
 
     const listing = await Listing.create({
@@ -100,10 +112,11 @@ const createListing = async (req, res) => {
 };
 
 // GET /listings/:id
+// Return full localized title/description (both languages) rather than
+// selecting a specific language on the server.
 const getListing = async (req, res) => {
   try {
     const id = req.params.id;
-    const lang = req.query.lang || 'en';
     const listing = await Listing.findById(id).lean();
     if (!listing) return res.status(404).json({ error: 'Not found' });
 
@@ -118,10 +131,12 @@ const getListing = async (req, res) => {
     // offers count
     const offersCount = await Offer.countDocuments({ listingId: id });
 
+    // Return the full localized objects for title/description so clients
+    // can choose which language to display.
     const result = {
       ...listing,
-      title: (listing.title && listing.title[lang]) ? listing.title[lang] : (listing.title && listing.title.en) || '',
-      description: (listing.description && listing.description[lang]) ? listing.description[lang] : (listing.description && listing.description.en) || '',
+      title: listing.title || { en: '', ar: '' },
+      description: listing.description || { en: '', ar: '' },
       seller,
       offersCount,
       timeAgo: require('../helpers/timeAgo')(listing.createdAt),
@@ -137,7 +152,7 @@ const getListing = async (req, res) => {
 // GET /listings (search & filter)
 const listListings = async (req, res) => {
   try {
-    const { search, minPrice, maxPrice, condition, category, subCategory, status, page = 1, limit = 20, lang = 'en' } = req.query;
+    const { search, minPrice, maxPrice, condition, category, subCategory, status, page = 1, limit = 20 } = req.query;
     const q = { };
     if (category) q.category = { $in: category.split(',') };
     if (subCategory) q.subCategory = { $in: subCategory.split(',') };
@@ -172,8 +187,9 @@ const listListings = async (req, res) => {
       const offersCount = countsMap[String(doc._id)] || 0;
       out.push({
         ...doc,
-        title: (doc.title && doc.title[lang]) ? doc.title[lang] : (doc.title && doc.title.en) || '',
-        description: (doc.description && doc.description[lang]) ? doc.description[lang] : (doc.description && doc.description.en) || '',
+        // Return full localized objects for client-side selection
+        title: doc.title || { en: '', ar: '' },
+        description: doc.description || { en: '', ar: '' },
         seller: seller ? { id: seller._id, username: seller.username, profileImage: seller.profileImage, roles: seller.roles, position: seller.position, country: seller.country, region: seller.region, rating: seller.rating || 5.0, ratingCount: seller.ratingCount || 0, sellerType: seller.sellerType || 'seller' } : null,
         offersCount,
         timeAgo: timeAgo(doc.createdAt),
@@ -221,29 +237,16 @@ const updateListing = async (req, res) => {
       }
     }
 
-    // validate and upload newly attached files in req.files
-    const files = req.files || [];
-    for (const f of files) {
-      if (!ALLOWED.includes(f.mimetype)) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'Invalid file type' });
-      }
-      if (f.size > MAX_BYTES) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
-      }
+    // Newly attached files should be provided through the uploads endpoint.
+    // Accept files metadata passed in the JSON body (e.g. after upload).
+    let newFiles = [];
+    if (data.files) {
+      try { newFiles = typeof data.files === 'string' ? JSON.parse(data.files) : data.files; } catch (e) { newFiles = data.files; }
     }
-    if (files.length) {
-      for (const f of files) {
-        let url = null;
-        try {
-          url = await uploadFile(f.path, { public_id: `listings/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
-        } catch (err) {
-          console.error('Cloudinary upload failed for', f.originalname, err && err.message);
-        }
-        if (f.mimetype && f.mimetype.startsWith('image') && url) listing.images.push(url);
-        listing.files.push({ filename: f.filename || f.originalname, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url });
-        try { fs.unlinkSync(f.path); } catch (e) {}
+    if (Array.isArray(newFiles) && newFiles.length) {
+      for (const fdoc of newFiles) {
+        if (fdoc.mimeType && fdoc.mimeType.startsWith('image') && fdoc.urlSrc) listing.images.push(fdoc.urlSrc);
+        listing.files.push(fdoc);
       }
     }
 

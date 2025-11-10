@@ -9,25 +9,19 @@ const createOffer = async (req, res) => {
     if (!listingId && !requestId) return res.status(400).json({ error: 'listingId or requestId required' });
     if (!price) return res.status(400).json({ error: 'price required' });
 
-    // handle file attachments if present in req.files (multer)
-    const files = req.files || [];
-    const fileDocs = [];
-    if (files.length) {
-      const { uploadFile } = require('../helpers/cloudinary');
-      for (const f of files) {
-        try {
-          const uploadRes = await uploadFile(f.path, { public_id: `offers/${Date.now()}-${f.originalname.replace(/\s+/g,'-')}` });
-          const url = uploadRes && uploadRes.url ? uploadRes.url : null;
-          const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
-          fileDocs.push({ filename: f.filename || f.originalname, url, publicId });
-        } catch (e) {
-          console.error('Offer file upload failed', e.message || e);
-        }
-        try { require('fs').unlinkSync(f.path); } catch (e) {}
-      }
+  // proposalText should be stored as localized object
+  const { ensureLocalized } = require('../helpers/translate');
+  let localizedProposal = undefined;
+  if (proposalText) localizedProposal = await ensureLocalized(proposalText);
+
+  // File attachments are handled by a dedicated uploads endpoint. Accept
+  // metadata in the JSON body (e.g. after upload) under `files`.
+    let fileDocs = [];
+    if (req.body.files) {
+      try { fileDocs = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files; } catch (e) { fileDocs = req.body.files; }
     }
 
-    const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), proposalText, files: fileDocs });
+  const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), proposalText: localizedProposal, files: fileDocs });
     const payload = offer.toObject();
     payload.timeAgo = timeAgo(offer.createdAt);
     return res.status(201).json({ offer: payload });
@@ -45,6 +39,8 @@ const updateOffer = async (req, res) => {
     if (String(offer.userId) !== String(req.user?.id)) return res.status(403).json({ error: 'Not allowed' });
     const data = req.body || {};
 
+    const { ensureLocalized } = require('../helpers/translate');
+
     // handle removed files
     let removed = data.removedFiles || data.removed || null;
     if (removed) {
@@ -55,29 +51,27 @@ const updateOffer = async (req, res) => {
         // attempt remote deletion when publicId exists
         const { destroyFile } = require('../helpers/cloudinary');
         for (const r of removed) {
-          const match = offer.files.find(f => f.url === r || f.filename === r);
+          const match = offer.files.find(f => f.urlSrc === r || f.url === r || f.filename === r || f.originalname === r);
           if (match && match.publicId) {
             try { await destroyFile(match.publicId); } catch (e) { /* ignore */ }
           }
         }
-        offer.files = offer.files.filter(f => !removed.includes(f.url) && !removed.includes(f.filename));
+        offer.files = offer.files.filter(f => !removed.includes(f.urlSrc) && !removed.includes(f.url) && !removed.includes(f.filename) && !removed.includes(f.originalname));
       }
     }
 
-    // handle newly uploaded files (req.files) similar to createOffer
-    const files = req.files || [];
-    if (files.length) {
-      const { uploadFile } = require('../helpers/cloudinary');
-      for (const f of files) {
-        try {
-          const uploadRes = await uploadFile(f.path, { public_id: `offers/${Date.now()}-${f.originalname.replace(/\s+/g,'-')}` });
-          const url = uploadRes && uploadRes.url ? uploadRes.url : null;
-          const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
-          offer.files.push({ filename: f.filename || f.originalname, url, publicId });
-        } catch (e) {
-          console.error('Offer file upload failed', e && e.message);
-        }
-        try { require('fs').unlinkSync(f.path); } catch (e) {}
+    // Accept newly attached files metadata in `data.files` (uploaded separately)
+    let newFiles = [];
+    if (data.files) {
+      try { newFiles = typeof data.files === 'string' ? JSON.parse(data.files) : data.files; } catch (e) { newFiles = data.files; }
+    }
+    // handle localized proposalText update
+    if (data.proposalText) {
+      try { data.proposalText = await ensureLocalized(data.proposalText); } catch (e) { /* leave as-is */ }
+    }
+    if (Array.isArray(newFiles) && newFiles.length) {
+      for (const fdoc of newFiles) {
+        offer.files.push(fdoc);
       }
     }
 

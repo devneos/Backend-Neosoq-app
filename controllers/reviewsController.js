@@ -7,7 +7,10 @@ const createReview = async (req, res) => {
   try {
     const { reviewedUserId, rating, text } = req.body;
     if (!reviewedUserId || !rating) return res.status(400).json({ error: 'reviewedUserId and rating required' });
-    const review = await Review.create({ reviewerId: req.user?.id, reviewedUserId, rating: Number(rating), text });
+    const { ensureLocalized } = require('../helpers/translate');
+    let localizedText = undefined;
+    if (text) localizedText = await ensureLocalized(text);
+    const review = await Review.create({ reviewerId: req.user?.id, reviewedUserId, rating: Number(rating), text: localizedText });
     // Recalculate avg rating
     const ObjectId = mongoose.Types.ObjectId;
     const agg = await Review.aggregate([

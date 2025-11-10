@@ -1,148 +1,46 @@
 {
   "info": {
+    "_postman_id": "neosoq-marketplace-v2",
     "name": "Neosoq Marketplace API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_postman_id": "marketplace-collection"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3500" },
-    { "key": "accessToken", "value": "" }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Collection-level pre-request: add Authorization header when accessToken exists",
-          "const token = pm.environment.get('accessToken');",
-          "if (token) {",
-          "  // some Postman versions allow upserting headers; fallback to environment var used in headers",
-          "  pm.environment.set('Authorization', 'Bearer ' + token);",
-          "}"
-        ]
-      }
-    }
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Register",
+          "name": "Verify Login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"country\": \"US\",\n  \"region\": \"CA\",\n  \"password\": \"strongpassword\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth","register"] },
-            "description": "Register a new user.\n\nInputs (JSON body):\n- name (string) required — full name. Example: \"Test User\"\n- email (string) required — user email. Example: \"test@example.com\"\n- phone (string) optional — E.164 phone number (saved to phoneNumber)\n- country (string) optional — country code or name\n- region (string) optional — region or state\n- password (string) required — plain text password (will be hashed server-side). Example: \"strongpassword\"\n\nHeaders: Content-Type: application/json\n\nSuccess (200): returns confirmation object and creates an email verification token. Full success response example: {\n  \"status\": 200,\n  \"message\": \"Registered Successfully\"\n}\n\nCommon error responses:\n- 400 Bad Request — validation errors, e.g. missing email or weak password: { status:400, errors: [{field,message}] }\n- 409 Conflict — email already used: { status:409, message: \"Email already registered\" }\n\nNotes: Frontend should validate inputs before sending. Phone is optional for OAuth signups." 
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Register returns 200', function() { pm.response.to.have.status(200); });",
-                  "// response body may be a simple message; assert shape when present",
-                  "try { const json = pm.response.json(); if (json && json.token) { pm.environment.set('accessToken', json.token); } } catch(e) {}"
-                ]
-              }
-            }
-          ],
-          "response": [
-            {
-              "name": "Example - Registered",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"status\": 200,\n  \"message\": \"Registered Successfully\"\n}"
-            },
-            {
-              "name": "Example - Validation Error",
-              "status": "Bad Request",
-              "code": 400,
-              "body": "{\n  \"status\": 400,\n  \"errors\": [{ \"field\": \"email\", \"message\": \"Email is invalid\" }]\n}"
-            },
-            {
-              "name": "Example - Unauthorized",
-              "status": "Unauthorized",
-              "code": 401,
-              "body": "{\n  \"status\": 401,\n  \"message\": \"Unauthorized\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Google Sign-in",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"<ID_TOKEN>\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/google", "host": ["{{baseUrl}}"], "path": ["auth","google"] },
-            "description": "Google Sign-in / Sign-up.\n\nInputs (JSON body):\n- idToken (string) required — Google ID token obtained from Google Sign-in flow (client). Example: \"<ID_TOKEN>\"\n\nHeaders: Content-Type: application/json\n\nSuccess (200): returns accessToken and user object. Full example: {\n  \"accessToken\": \"<jwt>\",\n  \"user\": { \"id\": \"<id>\", \"username\": \"testuser\", \"email\": \"test@example.com\" }\n}\n\nCommon error responses:\n- 400 Bad Request — invalid or expired idToken: { status:400, message: \"Invalid Google ID token\" }\n- 500 Internal Server Error — identity provider or server error.\n\nNotes: If user doesn't exist, backend will create one. If Google doesn't provide a phone number, phoneNumber remains empty. Store accessToken in client for Authorization header."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Google signin returns 200', function() { pm.response.to.have.status(200); });",
-                  "const jsonData = pm.response.json();",
-                  "if (jsonData && jsonData.accessToken) {",
-                  "  pm.environment.set('accessToken', jsonData.accessToken);",
-                  "  console.log('Saved accessToken to environment');",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "response": [
-            {
-              "name": "Example - Google Signin",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"accessToken\": \"<jwt>\",\n  \"user\": { \"id\": \"<id>\", \"username\": \"testuser\", \"email\": \"test@example.com\" }\n}"
-            },
-            {
-              "name": "Example - Invalid Token",
-              "status": "Bad Request",
-              "code": 400,
-              "body": "{\n  \"status\": 400,\n  \"message\": \"Invalid Google ID token\"\n}"
-            }
-          ]
-        }
-        ,
-        {
-          "name": "Verify Login Code",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+1234567890\",\n  \"verificationCode\": \"<code>\"\n}" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"phoneNumber\":\"+1234567890\",\"verificationCode\":\"123456\"}" },
             "url": { "raw": "{{baseUrl}}/auth/login/verify", "host": ["{{baseUrl}}"], "path": ["auth","login","verify"] },
-            "description": "Verify login SMS code (passwordless phone login).\n\nInputs (JSON body):\n- phoneNumber (string) required — E.164 format, e.g. +1234567890\n- verificationCode (string) required — 4-6 digit code sent to phone\n\nHeaders: Content-Type: application/json\n\nSuccess (200): { \"accessToken\": \"<jwt>\", \"user\": { id, username } }\nErrors:\n- 400 Bad Request — invalid/expired code: { status:400, message: \"Invalid verification code\" }\n- 404 Not Found — phone number not recognized (if applicable)\n\nNotes: Save accessToken from response to Authorization header for subsequent requests."
+            "description": "Verify OTP and return accessToken + refreshToken. Test script stores tokens to environment."
           },
           "event": [
             {
               "listen": "test",
-              "script": { "type": "text/javascript", "exec": [ "pm.test('Verify returns 200', function() { pm.response.to.have.status(200); });", "const jsonData = pm.response.json(); if (jsonData && jsonData.accessToken) pm.environment.set('accessToken', jsonData.accessToken);" ] }
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save tokens so subsequent requests can use them",
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "  if (json && json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+                  "  if (json && json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+                  "  pm.test('response contains accessToken', () => pm.expect(json).to.have.property('accessToken'));",
+                  "} catch (e) { pm.test('response parse', () => { throw e; }); }"
+                ]
+              }
             }
           ],
-          "response": [
-            { "name": "Example - Verify", "status": "OK", "code": 200, "body": "{\n  \"accessToken\": \"<jwt>\"\n}" },
-            { "name": "Example - Invalid code", "status": "Bad Request", "code": 400, "body": "{\n  \"status\": 400,\n  \"message\": \"Invalid verification code\"\n}" }
-          ]
-        },
-        {
-          "name": "Complete Signup",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phoneNumber\": \"+1234567890\",\n  \"username\": \"newuser\"\n}" },
-            "url": { "raw": "{{baseUrl}}/auth/complete-signup", "host": ["{{baseUrl}}"], "path": ["auth","complete-signup"] },
-            "description": "Complete signup (for phone-based or partial signups).\n\nInputs (JSON body):\n- phoneNumber (string) required — E.164 format\n- username (string) required — desired username, must be unique\n\nHeaders: Content-Type: application/json\n\nSuccess (200): returns accessToken and user object. Example: { accessToken: \"<jwt>\", user: { id, username } }\nErrors:\n- 400 Bad Request — username already taken or invalid inputs: { status:400, message }\n\nNotes: Use when account was created via phone verification and additional profile completion is required.\n\nResponse example (username conflict): { \"status\":400, \"message\": \"Username already taken\" }"
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Complete signup returns 200', function() { pm.response.to.have.status(200); });", "const jsonData = pm.response.json(); if (jsonData && jsonData.accessToken) pm.environment.set('accessToken', jsonData.accessToken);" ] } } ],
-          "response": [ { "name": "Example - Complete Signup", "status": "OK", "code": 200, "body": "{\n  \"accessToken\": \"<jwt>\",\n  \"user\": { \"id\": \"<id>\", \"username\": \"newuser\" }\n}" }, { "name": "Example - Username taken", "status": "Bad Request", "code": 400, "body": "{ \"status\":400, \"message\": \"Username already taken\" }" } ]
+          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"accessToken\":\"<jwt>\",\"refreshToken\":\"<jwt>\",\"user\":{\"id\":\"<id>\"}}" } ]
         }
       ]
     },
@@ -150,262 +48,128 @@
       "name": "Listings",
       "item": [
         {
-          "name": "Create Listing",
+          "name": "Create Listing (POST /listings)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "category", "value": "bicycles", "type": "text", "description": "Primary category (string) - required" },
-              { "key": "subCategory", "value": "mountain", "type": "text", "description": "Sub-category (string) - optional" },
-              { "key": "title", "value": "Blue Bicycle", "type": "text", "description": "Title (string) - can be provided as `title` or localized as `title_en` / `title_ar`" },
-              { "key": "description", "value": "A well kept blue bicycle.", "type": "text", "description": "Description (string) - can be provided as `description` or localized as `description_en`" },
-              
-              { "key": "price", "value": "120", "type": "text", "description": "Numeric price (number) - optional" },
-              { "key": "quantity", "value": "1", "type": "text", "description": "Quantity available (integer) - optional" },
-              { "key": "condition", "value": "used", "type": "text", "description": "Condition (string) e.g., 'new', 'used' - optional" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "Attachment files. Allowed types: pdf, docx, png, jpg. Max 10MB each. Can include multiple `files` fields." },
-              { "key": "images", "type": "file", "src": "<select sample images>", "description": "(Optional) sample field. The controller reads uploaded files from req.files; providing files under any name is accepted. Recommended: use `files` for attachments." }
-            ] },
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"category\":\"bicycles\",\"subCategory\":\"mountain\",\"title\":\"Blue Bicycle\",\"description\":\"A well kept blue bicycle\",\"price\":120,\"files\":[] }" },
             "url": { "raw": "{{baseUrl}}/listings", "host": ["{{baseUrl}}"], "path": ["listings"] },
-            "description": "Create a listing. Use multipart/form-data.\n\nForm fields (form-data):\n- category (string) required\n- subCategory (string) optional\n- title (string) OR title_en/title_ar (localized)\n- description (string) OR description_en (localized)\n- price (number) optional\n- quantity (integer) optional\n- condition (string) optional, e.g. 'new' or 'used'\n- files (file) optional, repeatable — allowed: pdf, docx, png, jpg — max 10MB each\n- images (file) optional, repeatable — allowed: png, jpg — max 10MB each\n\nWhen editing (PUT), clients should send a `removedFiles` field (JSON array string or comma-separated string) listing file URLs or filenames to remove. Example: `[\"https://.../file1.png\",\"specs.pdf\"]` or `https://.../file1.png,specs.pdf`. The server will match items against stored `urlSrc`, `filename`, or `originalname`.\n\nBehavior: The server will set `reviewCompleted=false` for new listings and enqueue an email to dev@neosoq.com for moderation. If the listing has already been reviewed, responses will include `reviewCompleted:true` and moderator metadata.\n\nUI tips: Use Postman's form-data mode to add multiple file fields. For `removedFiles` add a text field containing a JSON array string (recommended) or a comma-separated list."
+            "description": "Create a listing. title/description may be string or localized object; files/images metadata should come from the uploads endpoint."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Create listing returns 201 or 200', function() { pm.response.to.be.oneOf([200,201]); });",
-                  "const json = pm.response.json();",
-                  "if (json && (json.listing || json._id)) {",
-                  "  const id = json.listing ? json.listing._id : json._id;",
-                  "  pm.environment.set('listingId', id);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "response": [
-            {
-              "name": "Example - Create Listing",
-              "status": "Created",
-              "code": 201,
-              "body": "{\n  \"listing\": {\n    \"_id\": \"<listingId>\",\n    \"title\": \"Blue Bicycle\",\n    \"category\": \"bicycles\",\n    \"files\": [\n      { \"filename\": \"photo1.jpg\", \"urlSrc\": \"https://res.cloudinary.com/.../photo1.jpg\", \"publicId\": \"abcdef123\", \"mimeType\": \"image/jpeg\", \"size\": 12345 },\n      { \"filename\": \"specs.pdf\", \"urlSrc\": \"https://res.cloudinary.com/.../specs.pdf\", \"publicId\": \"ghijk456\", \"mimeType\": \"application/pdf\", \"size\": 23456 }\n    ],\n    \"reviewCompleted\": false,\n    \"createdBy\": { \"id\": \"<userId>\", \"username\": \"seller1\" },\n    \"createdAt\": \"2025-11-01T00:00:00.000Z\"\n  }\n}"
-            },
-            {
-              "name": "Example - Create Listing (reviewCompleted true)",
-              "status": "Created",
-              "code": 201,
-              "body": "{\n  \"listing\": {\n    \"_id\": \"<listingId>\",\n    \"title\": \"Blue Bicycle\",\n    \"files\": [],\n    \"reviewCompleted\": true,\n    \"reviewedBy\": { \"id\": \"admin1\", \"email\": \"dev@neosoq.com\" }\n  }\n}"
-            },
-            {
-              "name": "Example - Validation error",
-              "status": "Bad Request",
-              "code": 400,
-              "body": "{ \"status\":400, \"message\": \"Title is required\" }"
-            },
-            {
-              "name": "Example - Unauthorized",
-              "status": "Unauthorized",
-              "code": 401,
-              "body": "{ \"status\":401, \"message\": \"Unauthorized\" }"
-            }
-          ]
+          "response": [ { "name": "201", "status": "Created", "code": 201, "body": "{\"listing\":{\"_id\":\"<id>\",\"category\":\"bicycles\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[],\"images\":[],\"createdBy\":\"<userId>\"}}" } ]
         },
         {
-          "name": "Get Listing",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/listings/:id?lang=en", "host": ["{{baseUrl}}"], "path": ["listings",":id"], "query": [{ "key": "lang", "value": "en" }] }, "description": "Retrieve a single listing by id. Returns listing object with files array and seller info.\n\nQuery parameters:\n- lang (string) optional — language code used to return localized title/description. Defaults to 'en'. Example: ?lang=ar" },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Get listing returns 200', function() { pm.response.to.have.status(200); });", "const j = pm.response.json(); pm.test('Listing has id', function() { pm.expect(j.listing || j._id || j.id).to.exist; });" ] } } ],
-          "response": [
-            { "name": "Example - Get Listing", "status": "OK", "code": 200, "body": "{\n  \"listing\": { \"_id\": \"<listingId>\", \"title\": \"Blue Bicycle\", \"files\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../photo1.jpg\", \"publicId\": \"abcdef123\" } ], \"createdBy\": { \"id\": \"<userId>\", \"username\": \"seller1\" }, \"reviewCompleted\": false }\n }" },
-            { "name": "Example - Get Listing (reviewCompleted true)", "status": "OK", "code": 200, "body": "{\n  \"listing\": { \"_id\": \"<listingId>\", \"title\": \"Blue Bicycle\", \"reviewCompleted\": true, \"reviewedAt\": \"2025-11-02T00:00:00.000Z\", \"reviewNotes\": \"Checked by admin\" }\n }" },
-            { "name": "Example - Not Found", "status": "Not Found", "code": 404, "body": "{ \"status\":404, \"message\": \"Listing not found\" }" },
-            { "name": "Example - Unauthorized", "status": "Unauthorized", "code": 401, "body": "{ \"status\":401, \"message\": \"Unauthorized\" }" }
-          ]
-        },
-        {
-          "name": "Update Listing",
+          "name": "List/Search Listings (GET /listings)",
           "request": {
-            "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "title", "value": "Blue Bicycle Updated", "type": "text", "description": "Optional - new title or use title_en/title_ar" },
-              
-              { "key": "description", "value": "Updated description", "type": "text", "description": "Optional - can be localized as description_en" },
-              
-              { "key": "price", "value": "130", "type": "text", "description": "Optional - numeric price" },
-              { "key": "quantity", "value": "2", "type": "text", "description": "Optional - integer" },
-              { "key": "condition", "value": "used", "type": "text", "description": "Optional - condition" },
-              { "key": "removedFiles", "value": "[\"https://.../old.jpg\"]", "type": "text", "description": "Files to remove (JSON array string or comma-separated list)" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "New attachment files (repeatable)" },
-              { "key": "images", "type": "file", "src": "<select sample images>", "description": "(Optional) sample field. The controller reads uploaded files from req.files; providing files under any name is accepted. Recommended: use `files` for attachments." }
-            ] },
-            "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] },
-            "description": "Update a listing. Only the owner may update. Use multipart/form-data to upload additional files; include `removedFiles` (JSON array string or comma-separated) to remove existing attachments."
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/listings?page=1&limit=20&search=bicycle&category=bicycles", "host": ["{{baseUrl}}"], "path": ["listings"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "search", "value": "bicycle" } ] },
+            "description": "Search and paginate listings. Search matches title.en and description.en. Returns localized objects."
           },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Update listing returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Response contains listing', function() { pm.expect(json.listing || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Update Listing", "status": "OK", "code": 200, "body": "{ \"listing\": { \"_id\": \"<listingId>\", \"title\": \"Blue Bicycle Updated\", \"price\": 130, \"files\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../new.jpg\", \"publicId\": \"new123\" } ], \"reviewCompleted\": false } }" }, { "name": "Example - Forbidden", "status": "Forbidden", "code": 403, "body": "{ \"status\":403, \"message\": \"Only owner may update listing\" }" } ]
+          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"listings\":[{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"offersCount\":2,\"timeAgo\":\"2 hours\"}],\"page\":1,\"limit\":20,\"totalCount\":1,\"totalPages\":1 }" } ]
         },
         {
-          "name": "Search Listings",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/listings?search=bike&minPrice=10&maxPrice=200&condition=used&category=bicycles&subCategory=mountain&status=active&page=1&limit=20&lang=en", "host": ["{{baseUrl}}"], "path": ["listings"], "query": [{"key":"search","value":"bike"},{"key":"minPrice","value":"10"},{"key":"maxPrice","value":"200"},{"key":"condition","value":"used"},{"key":"category","value":"bicycles"},{"key":"subCategory","value":"mountain"},{"key":"status","value":"active"},{"key":"page","value":"1"},{"key":"limit","value":"20"},{"key":"lang","value":"en"}] }, "description": "Search and filter listings. Supported query parameters (controller):\n- search (string) — text search applied to title.en and description.en\n- minPrice / maxPrice (number) — price range\n- condition (string) — e.g., 'new','used'\n- category (string) — comma-separated categories to include\n- subCategory (string) — comma-separated subCategories to include\n- status (string) — listing status (e.g., active, awarded)\n- page (number) — pagination page number, default 1\n- limit (number) — page size, default 20\n- lang (string) — language code used to return localized title/description (defaults to 'en')\n\nResponse includes listings array and pagination metadata (page, limit, totalCount, totalPages)." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Search returns 200', function() { pm.response.to.have.status(200); });", "const j = pm.response.json(); pm.test('Has listings array', function() { pm.expect(j.listings || j.data).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Search Listings", "status": "OK", "code": 200, "body": "{\n  \"page\": 1,\n  \"limit\": 10,\n  \"totalCount\": 42,\n  \"totalPages\": 5,\n  \"listings\": [ { \"_id\": \"<id>\", \"title\": \"Blue Bicycle\" } ]\n }" }, { "name":"Example - Empty results", "status":"OK", "code":200, "body":"{ \"page\":1, \"limit\":10, \"totalCount\":0, \"totalPages\":0, \"listings\": [] }" } ]
-        }
+          "name": "Get Listing (GET /listings/:id)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Retrieve a listing; localized fields included." },
+          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"listing\":{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[{\"filename\":\"specs.pdf\",\"originalname\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"publicId\":\"p1\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}],\"images\":[\"https://.../photo1.jpg\"],\"seller\":{\"id\":\"<userId>\",\"username\":\"seller1\"},\"offersCount\":3,\"timeAgo\":\"1 day\"}}" } ]
+        },
+        {
+          "name": "Update Listing (PUT /listings/:id)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Updated title\",\"removedFiles\":[] }" }, "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Update listing. Use `removedFiles` array to remove attachments. To add files, upload via /uploads/attach and include returned metadata in `files`." },
+        {
+          "name": "Delete Listing (DELETE /listings/:id)",
+          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Delete listing (owner only)." },
+        {
+          "name": "Remove Listing Files (POST /listings/:id/remove-files)",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"removedFiles\": [\"specs.pdf\"] }" }, "url": { "raw": "{{baseUrl}}/listings/:id/remove-files", "host": ["{{baseUrl}}"], "path": ["listings",":id","remove-files"] }, "description": "Helper endpoint used by UI to remove files from a listing (illustrative)." }
       ]
     },
     {
       "name": "Offers",
       "item": [
         {
-          "name": "Create Offer",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "listingId", "value": "<listingId>", "type": "text", "description": "Optional - target listing id (required if not supplying requestId)" },
-              { "key": "requestId", "value": "<requestId>", "type": "text", "description": "Optional - target request id (required if not supplying listingId)" },
-              { "key": "price", "value": "95", "type": "text", "description": "Price (number) - required" },
-              { "key": "proposalText", "value": "I can buy this", "type": "text", "description": "Optional proposal text" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "Attachment files (repeatable). Allowed: pdf/docx/png/jpg; max 10MB each" }
-            ] },
-            "url": { "raw": "{{baseUrl}}/offers", "host": ["{{baseUrl}}"], "path": ["offers"] },
-            "description": "Create an offer for a listing or request. Body (form-data): listingId OR requestId required; price required; proposalText optional; files optional (multipart). On success returns created offer object."
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Create offer returns 201 or 200', function() { pm.response.to.be.oneOf([200,201]); });", "const json = pm.response.json(); if (json && (json.offer || json._id)) pm.environment.set('offerId', (json.offer ? json.offer._id : json._id));" ] } } ],
-          "response": [ { "name": "Example - Create Offer", "status": "Created", "code": 201, "body": "{\n  \"offer\": { \"_id\": \"<offerId>\", \"listingId\": \"<listingId>\", \"userId\": \"<userId>\", \"price\": 90, \"status\": \"pending\" }\n }" }, { "name": "Example - Validation Error", "status": "Bad Request", "code": 400, "body": "{ \"status\":400, \"message\": \"Price must be a number\" }" }, { "name": "Example - Unauthorized", "status": "Unauthorized", "code": 401, "body": "{ \"status\":401, \"message\": \"Unauthorized\" }" } ]
-        },
+          "name": "Create Offer (POST /offers)",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"listingId\":\"<listingId>\",\"price\":95,\"proposalText\":\"I can do this for you\",\"files\":[] }" }, "url": { "raw": "{{baseUrl}}/offers", "host": ["{{baseUrl}}"], "path": ["offers"] }, "description": "Create an offer for a listing or request. proposalText is normalized to localized object on the server." },
         {
-          "name": "Update Offer",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "price", "value": "95", "type": "text", "description": "Optional - updated price" },
-              { "key": "proposalText", "value": "Updated proposal", "type": "text", "description": "Optional - proposal text" },
-              { "key": "removedFiles", "value": "[\"https://.../old-offer.pdf\"]", "type": "text", "description": "Files to remove (JSON array string or comma-separated list)" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "New attachment files (repeatable)" }
-            ] },
-            "url": { "raw": "{{baseUrl}}/offers/:id", "host": ["{{baseUrl}}"], "path": ["offers",":id"] },
-            "description": "Update an offer. Only the offer owner may update. Use multipart/form-data for attachments and `removedFiles` to remove existing attachments." 
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Update offer returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Offer present', function() { pm.expect(json.offer || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Update Offer", "status": "OK", "code": 200, "body": "{ \"offer\": { \"_id\": \"<offerId>\", \"price\": 95, \"files\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../new-attachment.pdf\", \"publicId\": \"p123\" } ] } }" }, { "name": "Example - Forbidden", "status": "Forbidden", "code": 403, "body": "{ \"status\":403, \"message\": \"Only owner may update offer\" }" } ]
-        },
+          "name": "Update Offer (PUT /offers/:id)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"proposalText\":\"Updated proposal\" }" }, "url": { "raw": "{{baseUrl}}/offers/:id", "host": ["{{baseUrl}}"], "path": ["offers",":id"] }, "description": "Update offer; only owner can edit." },
         {
-          "name": "Accept Offer",
-          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/offers/:id/accept", "host": ["{{baseUrl}}"], "path": ["offers",":id","accept"] }, "description": "Accept an offer. Only the listing/request owner may accept. Sets the offer status to accepted and awards the listing/request." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Accept offer returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Response has message or updated offer', function() { pm.expect(json.message || json.offer).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Accept Offer", "status": "OK", "code": 200, "body": "{\n  \"message\": \"Offer accepted\",\n  \"offer\": { \"_id\": \"<offerId>\", \"status\": \"accepted\" }\n}" }, { "name": "Example - Forbidden (not owner)", "status": "Forbidden", "code": 403, "body": "{ \"status\":403, \"message\": \"Only owner may accept offers\" }" } ]
-        }
+          "name": "Accept Offer (PUT /offers/:id/accept)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/accept", "host": ["{{baseUrl}}"], "path": ["offers",":id","accept"] }, "description": "Listing/request owner accepts an offer; owner-only action." },
+        {
+          "name": "Withdraw Offer (PUT /offers/:id/withdraw)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/withdraw", "host": ["{{baseUrl}}"], "path": ["offers",":id","withdraw"] }, "description": "Offer owner withdraws their offer." },
+        {
+          "name": "Complete Offer (PUT /offers/:id/complete)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/complete", "host": ["{{baseUrl}}"], "path": ["offers",":id","complete"] }, "description": "Mark offer as complete." },
+        {
+          "name": "List Offers (GET /offers)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/offers?listingId=<listingId>", "host": ["{{baseUrl}}"], "path": ["offers"], "query": [ { "key": "listingId", "value": "<listingId>" } ] }, "description": "List offers for a listing or request. Returns `new` (latest 3) and `offers` arrays." }
       ]
-    }
-    ,
+    },
     {
       "name": "Requests",
       "item": [
         {
-          "name": "Create Request",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "title", "value": "Need a website", "type": "text", "description": "Title (string) - required" },
-              { "key": "description", "value": "Simple 5 page site", "type": "text", "description": "Description (string) - optional" },
-              { "key": "projectType", "value": "one-time", "type": "text", "description": "Project type (string) - optional (e.g., one-time)" },
-              { "key": "pricingType", "value": "fixed", "type": "text", "description": "Pricing type (string) - optional (e.g., fixed, hourly)" },
-              { "key": "price", "value": "500", "type": "text", "description": "Price (number) - optional" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "Attachment files (repeatable). Allowed: pdf, docx, png, jpg; max 10MB each" }
-            ] },
-            "url": { "raw": "{{baseUrl}}/requests", "host": ["{{baseUrl}}"], "path": ["requests"] },
-            "description": "Create a service request. Controller expects fields: title (required), description, projectType, pricingType, price. Attachments may be sent as multipart/form-data under `files` (repeatable). If no files are attached you may send JSON instead (Content-Type: application/json) with the same keys."
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Create request returns 201', function() { pm.response.to.be.oneOf([200,201]); });", "const json = pm.response.json(); if (json && (json.request || json._id)) pm.environment.set('requestId', (json.request ? json.request._id : json._id));" ] } } ],
-          "response": [ { "name": "Example - Create Request", "status": "Created", "code": 201, "body": "{\n  \"request\": { \"_id\": \"<requestId>\", \"title\": \"Need a website\", \"price\": 500, \"attachments\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../specs.pdf\", \"publicId\": \"xyz123\" } ], \"createdBy\": { \"id\": \"<userId>\", \"username\": \"buyer1\" } }\n}" }, { "name": "Example - Validation error", "status": "Bad Request", "code": 400, "body": "{ \"status\":400, \"message\": \"Title is required\" }" }, { "name": "Example - Unauthorized", "status": "Unauthorized", "code": 401, "body": "{ \"status\":401, \"message\": \"Unauthorized\" }" } ]
-        },
+          "name": "Create Request (POST /requests)",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Need a website\",\"description\":\"Simple 5 page site\",\"projectType\":\"one-time\",\"pricingType\":\"fixed\",\"price\":500,\"files\":[] }" }, "url": { "raw": "{{baseUrl}}/requests", "host": ["{{baseUrl}}"], "path": ["requests"] }, "description": "Create a service request. title/description stored as localized object." },
         {
-          "name": "Get Request",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests/:id?lang=en", "host": ["{{baseUrl}}"], "path": ["requests",":id"], "query": [{ "key": "lang", "value": "en" }] }, "description": "Retrieve a single request including attachments and createdBy.\n\nQuery parameters:\n- lang (string) optional — language code used to return localized title/description. Defaults to 'en'." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Get request 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Request exists', function() { pm.expect(json.request || json._id).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Get Request", "status": "OK", "code": 200, "body": "{\n  \"request\": { \"_id\": \"<requestId>\", \"title\": \"Need a website\", \"attachments\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../specs.pdf\", \"publicId\": \"xyz123\" } ] }\n}" }, { "name": "Example - Not Found", "status": "Not Found", "code": 404, "body": "{ \"status\":404, \"message\": \"Request not found\" }" }, { "name": "Example - Unauthorized", "status": "Unauthorized", "code": 401, "body": "{ \"status\":401, \"message\": \"Unauthorized\" }" } ]
-        },
+          "name": "Get Request (GET /requests/:id)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Retrieve a request; localized fields included." },
         {
-          "name": "Update Request",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "title", "value": "Need a website - updated", "type": "text" },
-              { "key": "description", "value": "Updated description", "type": "text" },
-              { "key": "projectType", "value": "one-time", "type": "text" },
-              { "key": "pricingType", "value": "fixed", "type": "text" },
-              { "key": "price", "value": "600", "type": "text" },
-              { "key": "removedFiles", "value": "[\"https://.../old-specs.pdf\"]", "type": "text", "description": "Files to remove (JSON array string or comma-separated list)" },
-              { "key": "files", "type": "file", "src": "<select sample files>", "description": "New attachment files (repeatable)" }
-            ] },
-            "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] },
-            "description": "Update a request. Only owner may update. Use multipart/form-data for attachments; include `removedFiles` to delete existing attachments." 
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Update request returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Response contains request', function() { pm.expect(json.request || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Update Request", "status": "OK", "code": 200, "body": "{ \"request\": { \"_id\": \"<requestId>\", \"title\": \"Need a website - updated\", \"attachments\": [ { \"urlSrc\": \"https://res.cloudinary.com/.../new-specs.pdf\", \"publicId\": \"p789\" } ] } }" }, { "name": "Example - Forbidden", "status": "Forbidden", "code": 403, "body": "{ \"status\":403, \"message\": \"Only owner may update request\" }" } ]
-        },
+          "name": "List Requests (GET /requests)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["requests"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" } ] }, "description": "List requests; returns localized title/description." },
         {
-          "name": "List Requests",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["requests"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }, "description": "List requests with paging. Supported query parameters (controller):\n- page (number) — pagination page number, default 1\n- limit (number) — page size, default 20\n\nNo additional search filters are implemented on the backend for requests (controller only supports paging)." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('List requests returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Has array', function() { pm.expect(json.requests || json.data || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - List Requests", "status": "OK", "code": 200, "body": "{ \"requests\": [ { \"_id\": \"<requestId>\", \"title\": \"Need a website\" } ], \"page\":1, \"limit\":10 }" }, { "name": "Example - Empty list", "status": "OK", "code": 200, "body": "{ \"requests\": [], \"page\":1, \"limit\":10 }" } ]
-        }
+          "name": "Update Request (PUT /requests/:id)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Updated request title\" }" }, "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Update request; owner-only." },
+        {
+          "name": "Delete Request (DELETE /requests/:id)",
+          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Delete a request (owner-only)." }
       ]
     },
     {
       "name": "Reviews",
       "item": [
         {
-          "name": "Create Review",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"reviewedUserId\": \"<userId>\",\n  \"rating\": 5,\n  \"text\": \"Excellent service\"\n}" },
-            "url": { "raw": "{{baseUrl}}/reviews", "host": ["{{baseUrl}}"], "path": ["reviews"] },
-            "description": "Create a review for a user. On success, returns review object and recalculated average rating for the reviewed user." 
-          },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Create review returns 201 or 200', function() { pm.response.to.be.oneOf([200,201]); });", "const json = pm.response.json(); if (json && (json.review || json._id)) pm.environment.set('reviewId', (json.review ? json.review._id : json._id));" ] } } ],
-          "response": [ { "name": "Example - Create Review", "status": "Created", "code": 201, "body": "{ \"review\": { \"_id\": \"<reviewId>\", \"rating\": 5, \"text\": \"Excellent service\" }, \"averageRating\": 4.8 }" }, { "name": "Example - Validation error", "status": "Bad Request", "code": 400, "body": "{ \"status\":400, \"message\": \"Rating must be between 1 and 5\" }" } ]
-        },
+          "name": "Create Review (POST /reviews)",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"reviewedUserId\":\"<userId>\",\"rating\":5,\"text\":\"Great work\" }" }, "url": { "raw": "{{baseUrl}}/reviews", "host": ["{{baseUrl}}"], "path": ["reviews"] }, "description": "Create a review for a user; text stored as localized object." },
         {
-          "name": "List Reviews for User",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/reviews/user/:userId", "host": ["{{baseUrl}}"], "path": ["reviews","user",":userId"] }, "description": "Get reviews for a specific user." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('List reviews 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Has reviews array', function() { pm.expect(json.reviews || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - List Reviews", "status": "OK", "code": 200, "body": "{ \"reviews\": [ { \"_id\": \"<reviewId>\", \"rating\": 5, \"text\": \"Excellent service\" } ], \"averageRating\": 4.8 }" }, { "name": "Example - Empty", "status": "OK", "code": 200, "body": "{ \"reviews\": [], \"averageRating\": null }" } ]
-        }
+          "name": "List Reviews for User (GET /reviews/user/:userId)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/reviews/user/:userId", "host": ["{{baseUrl}}"], "path": ["reviews","user",":userId"] }, "description": "List reviews for a user; text is localized." }
       ]
     },
     {
       "name": "Disputes",
       "item": [
         {
-          "name": "Create Dispute",
+          "name": "Create Dispute (POST /disputes)",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"accusedUser\":\"<userId>\",\"issueType\":\"fraud\",\"description\":\"Buyer provided fake documents\" }" }, "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] }, "description": "Create a dispute. description stored as localized object." },
+        {
+          "name": "Get Dispute (GET /disputes/:id)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Retrieve a dispute by id." },
+        {
+          "name": "List Disputes (GET /disputes)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] }, "description": "List disputes." },
+        {
+          "name": "Update Dispute (PUT /disputes/:id)",
+          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"description\":\"Updated description\" }" }, "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Update dispute; description will be normalized to localized object." },
+        {
+          "name": "Delete Dispute (DELETE /disputes/:id)",
+          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Delete dispute." }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Attach Files (POST /uploads/attach)",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"accusedUser\": \"<userId>\",\n  \"issueType\": \"fraud\",\n  \"description\": \"Buyer provided fake documents\"\n}" },
-            "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] },
-            "description": "Report a dispute against a user. Returns created dispute object." 
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "body": { "mode": "formdata", "formdata": [ { "key": "ownerType", "value": "listing", "type": "text" }, { "key": "ownerId", "value": "<listingId>", "type": "text" }, { "key": "descriptions", "value": "[\"Front view\",\"Specs\"]", "type": "text" }, { "key": "files", "type": "file", "src": "<choose file>" } ] },
+            "url": { "raw": "{{baseUrl}}/uploads/attach", "host": ["{{baseUrl}}"], "path": ["uploads","attach"] },
+            "description": "Attach files to an owner. Provide ownerType and ownerId. descriptions may be a JSON array string aligned to files order."
           },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Create dispute returns 201', function() { pm.response.to.be.oneOf([200,201]); });", "const json = pm.response.json(); if (json && (json.dispute || json._id)) pm.environment.set('disputeId', (json.dispute ? json.dispute._id : json._id));" ] } } ],
-          "response": [ { "name": "Example - Create Dispute", "status": "Created", "code": 201, "body": "{ \"dispute\": { \"_id\": \"<disputeId>\", \"accusedUser\": \"<userId>\", \"issueType\": \"fraud\", \"description\": \"Buyer provided fake documents\" } }" }, { "name": "Example - Validation error", "status": "Bad Request", "code": 400, "body": "{ \"status\":400, \"message\": \"Issue type is required\" }" } ]
-        },
-        {
-          "name": "List Disputes",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] }, "description": "List disputes. Admin-only data or paginated depending on implementation." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('List disputes returns 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Has disputes array', function() { pm.expect(json.disputes || json).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - List Disputes", "status": "OK", "code": 200, "body": "{ \"disputes\": [ { \"_id\": \"<disputeId>\", \"accusedUser\": \"<userId>\", \"issueType\": \"fraud\" } ] }" }, { "name": "Example - Empty", "status": "OK", "code": 200, "body": "{ \"disputes\": [] }" } ]
-        },
-        {
-          "name": "Get Dispute",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Get a single dispute by id." },
-          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Get dispute 200', function() { pm.response.to.have.status(200); });", "const json = pm.response.json(); pm.test('Has dispute', function() { pm.expect(json.dispute || json._id).to.exist; });" ] } } ],
-          "response": [ { "name": "Example - Get Dispute", "status": "OK", "code": 200, "body": "{ \"dispute\": { \"_id\": \"<disputeId>\", \"accusedUser\": \"<userId>\", \"issueType\": \"fraud\", \"description\": \"Buyer provided fake documents\" } }" }, { "name": "Example - Not Found", "status": "Not Found", "code": 404, "body": "{ \"status\":404, \"message\": \"Dispute not found\" }" } ]
+          "response": [ { "name": "201", "status": "Created", "code": 201, "body": "{\"success\":true,\"files\":[{\"filename\":\"specs.pdf\",\"originalname\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"publicId\":\"p1\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}]}" } ]
         }
       ]
     }

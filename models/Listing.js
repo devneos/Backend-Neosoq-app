@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+const LocalizedString = new mongoose.Schema({
+  en: { type: String, default: '' },
+  ar: { type: String, default: '' },
+}, { _id: false });
+
 const FileSchema = new mongoose.Schema({
   filename: String,
   originalname: String,
@@ -7,11 +12,7 @@ const FileSchema = new mongoose.Schema({
   size: Number,
   path: String,
   urlSrc: String,
-}, { _id: false });
-
-const LocalizedString = new mongoose.Schema({
-  en: { type: String, default: '' },
-  ar: { type: String, default: '' },
+  description: { type: LocalizedString, default: () => ({ en: '', ar: '' }) },
 }, { _id: false });
 
 const ListingSchema = new mongoose.Schema({

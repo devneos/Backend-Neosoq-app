@@ -4,7 +4,10 @@ const createDispute = async (req, res) => {
   try {
     const { accusedUser, issueType, description } = req.body;
     if (!accusedUser || !issueType) return res.status(400).json({ error: 'accusedUser and issueType required' });
-    const d = await Dispute.create({ createdBy: req.user?.id, accusedUser, issueType, description });
+    const { ensureLocalized } = require('../helpers/translate');
+    let localizedDesc = undefined;
+    if (description) localizedDesc = await ensureLocalized(description);
+    const d = await Dispute.create({ createdBy: req.user?.id, accusedUser, issueType, description: localizedDesc });
     return res.status(201).json({ dispute: d });
   } catch (e) {
     console.error('createDispute', e);
@@ -38,6 +41,11 @@ const updateDispute = async (req, res) => {
   try {
     const id = req.params.id;
     const data = req.body;
+    // If description is present, ensure it is stored as localized object
+    const { ensureLocalized } = require('../helpers/translate');
+    if (data.description) {
+      try { data.description = await ensureLocalized(data.description); } catch (e) { /* ignore */ }
+    }
     const d = await Dispute.findByIdAndUpdate(id, data, { new: true }).lean();
     return res.json({ dispute: d });
   } catch (e) {

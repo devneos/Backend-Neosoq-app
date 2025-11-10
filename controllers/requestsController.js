@@ -15,29 +15,11 @@ const createRequest = async (req, res) => {
     if (!title) return res.status(400).json({ error: 'title required' });
     const t = await ensureLocalized(title);
     const d = await ensureLocalized(description);
-    // handle attachments from req.files
-    const files = req.files || [];
-    for (const f of files) {
-      if (!ALLOWED.includes(f.mimetype)) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'Invalid file type' });
-      }
-      if (f.size > MAX_BYTES) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
-      }
-    }
-
-    const fileDocs = [];
-    for (const f of files) {
-      let url = null;
-      try {
-        url = await uploadFile(f.path, { public_id: `requests/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` });
-      } catch (err) {
-        console.error('Cloudinary upload failed for', f.originalname, err && err.message);
-      }
-      fileDocs.push({ filename: f.filename || f.originalname, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url });
-      try { fs.unlinkSync(f.path); } catch (e) {}
+    // Attachments should be uploaded via the uploads endpoint. Accept files
+    // metadata in the JSON body (`files`) as an array (or JSON string).
+    let fileDocs = [];
+    if (req.body.files) {
+      try { fileDocs = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files; } catch (e) { fileDocs = req.body.files; }
     }
 
     const request = await Request.create({ title: t, description: d, projectType, pricingType, price: price ? Number(price) : undefined, files: fileDocs, createdBy: req.user?.id });
@@ -53,10 +35,10 @@ const createRequest = async (req, res) => {
 const getRequest = async (req, res) => {
   try {
     const id = req.params.id;
-    const lang = req.query.lang || 'en';
     const request = await Request.findById(id).lean();
     if (!request) return res.status(404).json({ error: 'Not found' });
-    return res.json({ request: { ...request, title: (request.title && request.title[lang]) ? request.title[lang] : request.title.en, description: (request.description && request.description[lang]) ? request.description[lang] : request.description.en, timeAgo: timeAgo(request.createdAt) } });
+    // Return full localized title/description so the client can pick language
+    return res.json({ request: { ...request, timeAgo: timeAgo(request.createdAt) } });
   } catch (e) {
     console.error('getRequest', e);
     return res.status(500).json({ error: 'Failed to fetch request' });
@@ -68,7 +50,8 @@ const listRequests = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const docs = await Request.find({}).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
-    const out = docs.map(d => ({ ...d, title: d.title && d.title.en, description: d.description && d.description.en, timeAgo: timeAgo(d.createdAt) }));
+  // Return full localized objects (title/description) instead of a single language
+  const out = docs.map(d => ({ ...d, title: d.title || { en: '', ar: '' }, description: d.description || { en: '', ar: '' }, timeAgo: timeAgo(d.createdAt) }));
     return res.json({ requests: out, page: Number(page), limit: Number(limit) });
   } catch (e) {
     console.error('listRequests', e);
@@ -107,26 +90,14 @@ const updateRequest = async (req, res) => {
         }
     }
 
-    // handle newly uploaded files in req.files
-    const files = req.files || [];
-    for (const f of files) {
-      if (!ALLOWED.includes(f.mimetype)) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'Invalid file type' });
-      }
-      if (f.size > MAX_BYTES) {
-        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
-        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
-      }
+    // Accept newly attached files metadata in data.files (uploaded via uploads endpoint)
+    let newFiles = [];
+    if (data.files) {
+      try { newFiles = typeof data.files === 'string' ? JSON.parse(data.files) : data.files; } catch (e) { newFiles = data.files; }
     }
-    if (files.length) {
-      for (const f of files) {
-        let uploadRes = null;
-        try { uploadRes = await uploadFile(f.path, { public_id: `requests/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}` }); } catch (err) { console.error('Cloudinary upload failed for', f.originalname, err && err.message); }
-        const url = uploadRes && uploadRes.url ? uploadRes.url : null;
-        const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
-        reqDoc.files.push({ filename: f.filename || f.originalname, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId });
-        try { fs.unlinkSync(f.path); } catch (e) {}
+    if (Array.isArray(newFiles) && newFiles.length) {
+      for (const fdoc of newFiles) {
+        reqDoc.files.push(fdoc);
       }
     }
 

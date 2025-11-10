@@ -50,6 +50,7 @@ app.use("/offers", require("./routes/offersRoutes"));
 app.use("/requests", require("./routes/requestsRoutes"));
 app.use("/reviews", require("./routes/reviewsRoutes"));
 app.use("/disputes", require("./routes/disputesRoutes"));
+app.use("/uploads", require("./routes/uploadsRoutes"));
 
 // 404 Handler
 app.all("*", (req, res) => {
