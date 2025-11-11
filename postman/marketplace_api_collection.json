@@ -5,9 +5,14 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3500" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3500"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -17,10 +22,28 @@
           "name": "Verify Login",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\"phoneNumber\":\"+1234567890\",\"verificationCode\":\"123456\"}" },
-            "url": { "raw": "{{baseUrl}}/auth/login/verify", "host": ["{{baseUrl}}"], "path": ["auth","login","verify"] },
-            "description": "Verify OTP and return accessToken + refreshToken. Test script stores tokens to environment."
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phoneNumber\":\"+1234567890\",\"verificationCode\":\"123456\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "description": "Returns accessToken and refreshToken"
           },
           "event": [
             {
@@ -28,19 +51,34 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Save tokens so subsequent requests can use them",
+                  "// Store tokens returned by login so subsequent requests can use them",
                   "try {",
                   "  const json = pm.response.json();",
-                  "  pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "  if (json && json.accessToken) pm.environment.set('accessToken', json.accessToken);",
-                  "  if (json && json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
-                  "  pm.test('response contains accessToken', () => pm.expect(json).to.have.property('accessToken'));",
-                  "} catch (e) { pm.test('response parse', () => { throw e; }); }"
+                  "  if (json && json.accessToken) {",
+                  "    pm.environment.set('accessToken', json.accessToken);",
+                  "  }",
+                  "  if (json && json.refreshToken) {",
+                  "    pm.environment.set('refreshToken', json.refreshToken);",
+                  "  }",
+                  "  pm.test('Login returned accessToken', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "  });",
+                  "} catch (e) {",
+                  "  pm.test('Response JSON parse', function () { throw e; });",
+                  "}"
                 ]
               }
             }
           ],
-          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"accessToken\":\"<jwt>\",\"refreshToken\":\"<jwt>\",\"user\":{\"id\":\"<id>\"}}" } ]
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"accessToken\":\"<jwt>\",\"refreshToken\":\"<jwt>\",\"user\":{\"id\":\"<id>\"}}"
+            }
+          ]
         }
       ]
     },
@@ -48,128 +86,317 @@
       "name": "Listings",
       "item": [
         {
-          "name": "Create Listing (POST /listings)",
+          "name": "Create Listing",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\"category\":\"bicycles\",\"subCategory\":\"mountain\",\"title\":\"Blue Bicycle\",\"description\":\"A well kept blue bicycle\",\"price\":120,\"files\":[] }" },
-            "url": { "raw": "{{baseUrl}}/listings", "host": ["{{baseUrl}}"], "path": ["listings"] },
-            "description": "Create a listing. title/description may be string or localized object; files/images metadata should come from the uploads endpoint."
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"category\":\"bicycles\",\"title\":\"Blue Bicycle\",\"description\":\"A well kept blue bicycle\",\"price\":120,\"files\":[]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ]
+            },
+            "description": "Create listing; title/description normalized to {en,ar}"
           },
-          "response": [ { "name": "201", "status": "Created", "code": 201, "body": "{\"listing\":{\"_id\":\"<id>\",\"category\":\"bicycles\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[],\"images\":[],\"createdBy\":\"<userId>\"}}" } ]
+          "response": [
+            {
+              "name": "201",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"listing\":{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[]}}"
+            }
+          ]
         },
         {
-          "name": "List/Search Listings (GET /listings)",
+          "name": "Get Listing",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/listings?page=1&limit=20&search=bicycle&category=bicycles", "host": ["{{baseUrl}}"], "path": ["listings"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }, { "key": "search", "value": "bicycle" } ] },
-            "description": "Search and paginate listings. Search matches title.en and description.en. Returns localized objects."
+            "url": {
+              "raw": "{{baseUrl}}/listings/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                ":id"
+              ]
+            },
+            "description": "Get listing returns localized fields"
           },
-          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"listings\":[{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"offersCount\":2,\"timeAgo\":\"2 hours\"}],\"page\":1,\"limit\":20,\"totalCount\":1,\"totalPages\":1 }" } ]
-        },
-        {
-          "name": "Get Listing (GET /listings/:id)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Retrieve a listing; localized fields included." },
-          "response": [ { "name": "200", "status": "OK", "code": 200, "body": "{\"listing\":{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[{\"filename\":\"specs.pdf\",\"originalname\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"publicId\":\"p1\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}],\"images\":[\"https://.../photo1.jpg\"],\"seller\":{\"id\":\"<userId>\",\"username\":\"seller1\"},\"offersCount\":3,\"timeAgo\":\"1 day\"}}" } ]
-        },
-        {
-          "name": "Update Listing (PUT /listings/:id)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Updated title\",\"removedFiles\":[] }" }, "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Update listing. Use `removedFiles` array to remove attachments. To add files, upload via /uploads/attach and include returned metadata in `files`." },
-        {
-          "name": "Delete Listing (DELETE /listings/:id)",
-          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/listings/:id", "host": ["{{baseUrl}}"], "path": ["listings",":id"] }, "description": "Delete listing (owner only)." },
-        {
-          "name": "Remove Listing Files (POST /listings/:id/remove-files)",
-          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"removedFiles\": [\"specs.pdf\"] }" }, "url": { "raw": "{{baseUrl}}/listings/:id/remove-files", "host": ["{{baseUrl}}"], "path": ["listings",":id","remove-files"] }, "description": "Helper endpoint used by UI to remove files from a listing (illustrative)." }
-      ]
-    },
-    {
-      "name": "Offers",
-      "item": [
-        {
-          "name": "Create Offer (POST /offers)",
-          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"listingId\":\"<listingId>\",\"price\":95,\"proposalText\":\"I can do this for you\",\"files\":[] }" }, "url": { "raw": "{{baseUrl}}/offers", "host": ["{{baseUrl}}"], "path": ["offers"] }, "description": "Create an offer for a listing or request. proposalText is normalized to localized object on the server." },
-        {
-          "name": "Update Offer (PUT /offers/:id)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"proposalText\":\"Updated proposal\" }" }, "url": { "raw": "{{baseUrl}}/offers/:id", "host": ["{{baseUrl}}"], "path": ["offers",":id"] }, "description": "Update offer; only owner can edit." },
-        {
-          "name": "Accept Offer (PUT /offers/:id/accept)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/accept", "host": ["{{baseUrl}}"], "path": ["offers",":id","accept"] }, "description": "Listing/request owner accepts an offer; owner-only action." },
-        {
-          "name": "Withdraw Offer (PUT /offers/:id/withdraw)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/withdraw", "host": ["{{baseUrl}}"], "path": ["offers",":id","withdraw"] }, "description": "Offer owner withdraws their offer." },
-        {
-          "name": "Complete Offer (PUT /offers/:id/complete)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/offers/:id/complete", "host": ["{{baseUrl}}"], "path": ["offers",":id","complete"] }, "description": "Mark offer as complete." },
-        {
-          "name": "List Offers (GET /offers)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/offers?listingId=<listingId>", "host": ["{{baseUrl}}"], "path": ["offers"], "query": [ { "key": "listingId", "value": "<listingId>" } ] }, "description": "List offers for a listing or request. Returns `new` (latest 3) and `offers` arrays." }
-      ]
-    },
-    {
-      "name": "Requests",
-      "item": [
-        {
-          "name": "Create Request (POST /requests)",
-          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Need a website\",\"description\":\"Simple 5 page site\",\"projectType\":\"one-time\",\"pricingType\":\"fixed\",\"price\":500,\"files\":[] }" }, "url": { "raw": "{{baseUrl}}/requests", "host": ["{{baseUrl}}"], "path": ["requests"] }, "description": "Create a service request. title/description stored as localized object." },
-        {
-          "name": "Get Request (GET /requests/:id)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Retrieve a request; localized fields included." },
-        {
-          "name": "List Requests (GET /requests)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/requests?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["requests"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" } ] }, "description": "List requests; returns localized title/description." },
-        {
-          "name": "Update Request (PUT /requests/:id)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"title\":\"Updated request title\" }" }, "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Update request; owner-only." },
-        {
-          "name": "Delete Request (DELETE /requests/:id)",
-          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/requests/:id", "host": ["{{baseUrl}}"], "path": ["requests",":id"] }, "description": "Delete a request (owner-only)." }
-      ]
-    },
-    {
-      "name": "Reviews",
-      "item": [
-        {
-          "name": "Create Review (POST /reviews)",
-          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"reviewedUserId\":\"<userId>\",\"rating\":5,\"text\":\"Great work\" }" }, "url": { "raw": "{{baseUrl}}/reviews", "host": ["{{baseUrl}}"], "path": ["reviews"] }, "description": "Create a review for a user; text stored as localized object." },
-        {
-          "name": "List Reviews for User (GET /reviews/user/:userId)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/reviews/user/:userId", "host": ["{{baseUrl}}"], "path": ["reviews","user",":userId"] }, "description": "List reviews for a user; text is localized." }
-      ]
-    },
-    {
-      "name": "Disputes",
-      "item": [
-        {
-          "name": "Create Dispute (POST /disputes)",
-          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"accusedUser\":\"<userId>\",\"issueType\":\"fraud\",\"description\":\"Buyer provided fake documents\" }" }, "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] }, "description": "Create a dispute. description stored as localized object." },
-        {
-          "name": "Get Dispute (GET /disputes/:id)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Retrieve a dispute by id." },
-        {
-          "name": "List Disputes (GET /disputes)",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] }, "description": "List disputes." },
-        {
-          "name": "Update Dispute (PUT /disputes/:id)",
-          "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\"description\":\"Updated description\" }" }, "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Update dispute; description will be normalized to localized object." },
-        {
-          "name": "Delete Dispute (DELETE /disputes/:id)",
-          "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ], "url": { "raw": "{{baseUrl}}/disputes/:id", "host": ["{{baseUrl}}"], "path": ["disputes",":id"] }, "description": "Delete dispute." }
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"listing\":{\"_id\":\"<id>\",\"title\":{\"en\":\"Blue Bicycle\",\"ar\":\"\"},\"description\":{\"en\":\"A well kept blue bicycle\",\"ar\":\"\"},\"files\":[{\"filename\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}],\"createdBy\":{\"id\":\"<userId>\"}}}"
+            }
+          ]
+        }
       ]
     },
     {
       "name": "Uploads",
       "item": [
         {
-          "name": "Attach Files (POST /uploads/attach)",
+          "name": "Attach Files",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "body": { "mode": "formdata", "formdata": [ { "key": "ownerType", "value": "listing", "type": "text" }, { "key": "ownerId", "value": "<listingId>", "type": "text" }, { "key": "descriptions", "value": "[\"Front view\",\"Specs\"]", "type": "text" }, { "key": "files", "type": "file", "src": "<choose file>" } ] },
-            "url": { "raw": "{{baseUrl}}/uploads/attach", "host": ["{{baseUrl}}"], "path": ["uploads","attach"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ownerType",
+                  "value": "listing",
+                  "type": "text"
+                },
+                {
+                  "key": "ownerId",
+                  "value": "<listingId>",
+                  "type": "text"
+                },
+                {
+                  "key": "descriptions",
+                  "value": "[\"Front view\",\"Specs\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "<choose file>"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploads/attach",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "uploads",
+                "attach"
+              ]
+            },
             "description": "Attach files to an owner. Provide ownerType and ownerId. descriptions may be a JSON array string aligned to files order."
           },
-          "response": [ { "name": "201", "status": "Created", "code": 201, "body": "{\"success\":true,\"files\":[{\"filename\":\"specs.pdf\",\"originalname\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"publicId\":\"p1\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}]}" } ]
+          "response": [
+            {
+              "name": "201",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"success\":true,\"files\":[{\"filename\":\"specs.pdf\",\"originalname\":\"specs.pdf\",\"mimeType\":\"application/pdf\",\"size\":102400,\"urlSrc\":\"https://.../specs.pdf\",\"publicId\":\"p1\",\"description\":{\"en\":\"Specs\",\"ar\":\"\"}}]}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\":\"Hello from tests\",\"files\":[] }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ]
+            },
+            "description": "Create a post. message normalized to {en,ar}. files is metadata from /uploads/attach"
+          },
+          "response": [
+            {
+              "name": "201",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"post\":{\"_id\":\"<id>\",\"message\":{\"en\":\"Hello from tests\",\"ar\":\"\"},\"files\":[],\"createdBy\":{\"id\":\"<userId>\"}}}"
+            }
+          ]
+        },
+        {
+          "name": "List Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ]
+            },
+            "description": "List posts with pagination"
+          },
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"posts\":[{\"_id\":\"<id>\",\"message\":{\"en\":\"Hello\",\"ar\":\"\"}}],\"page\":1,\"limit\":20}"
+            }
+          ]
+        },
+        {
+          "name": "Get Post",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":id"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"post\":{\"_id\":\"<id>\",\"message\":{\"en\":\"Hello\",\"ar\":\"\"}}}"
+            }
+          ]
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\":\"Updated message\",\"files\":[] }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":id"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"post\":{\"_id\":\"<id>\",\"message\":{\"en\":\"Updated message\",\"ar\":\"\"}}}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":id"
+              ]
+            },
+            "description": "Delete a post (owner only). Removes remote files if present."
+          },
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\":true}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Feed",
+      "item": [
+        {
+          "name": "Get Feed",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/feed?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feed"
+              ]
+            },
+            "description": "Merged feed of listings, requests and posts."
+          },
+          "response": [
+            {
+              "name": "200",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"items\":[{\"type\":\"post\",\"payload\":{\"_id\":\"<id>\",\"message\":{\"en\":\"Hello\"}}}],\"page\":1,\"limit\":20}"
+            }
+          ]
         }
       ]
     }

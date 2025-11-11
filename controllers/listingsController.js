@@ -65,7 +65,7 @@ const createListing = async (req, res) => {
         const url = uploadRes && uploadRes.url ? uploadRes.url : null;
         const publicId = uploadRes && uploadRes.public_id ? uploadRes.public_id : null;
         if (f.mimetype && f.mimetype.startsWith('image') && url) images.push(url);
-        fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId, description: '' });
+  fileDocs.push({ filename: f.filename, originalname: f.originalname, mimeType: f.mimetype, size: f.size, path: f.path, urlSrc: url, publicId, description: { en: '', ar: '' } });
         try { fs.unlinkSync(f.path); } catch (e) {}
       }
     }

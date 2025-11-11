@@ -3,6 +3,7 @@ const fs = require('fs');
 const Listing = require('../models/Listing');
 const Request = require('../models/Request');
 const Offer = require('../models/Offer');
+const Post = require('../models/Post');
 const { uploadFile, destroyFile } = require('../helpers/cloudinary');
 const { ensureLocalized } = require('../helpers/translate');
 
@@ -19,7 +20,7 @@ const attachFiles = async (req, res) => {
   try {
     const ownerType = req.body.ownerType;
     const ownerId = req.body.ownerId;
-    if (!ownerType || !['listing','request','offer'].includes(ownerType)) return res.status(400).json({ error: 'ownerType must be one of listing|request|offer' });
+  if (!ownerType || !['listing','request','offer','post'].includes(ownerType)) return res.status(400).json({ error: 'ownerType must be one of listing|request|offer|post' });
     if (!ownerId) return res.status(400).json({ error: 'ownerId required' });
 
     const files = req.files || [];
@@ -44,9 +45,10 @@ const attachFiles = async (req, res) => {
 
     // Lookup owner doc
     let owner = null;
-    if (ownerType === 'listing') owner = await Listing.findById(ownerId);
-    if (ownerType === 'request') owner = await Request.findById(ownerId);
-    if (ownerType === 'offer') owner = await Offer.findById(ownerId);
+  if (ownerType === 'listing') owner = await Listing.findById(ownerId);
+  if (ownerType === 'request') owner = await Request.findById(ownerId);
+  if (ownerType === 'offer') owner = await Offer.findById(ownerId);
+  if (ownerType === 'post') owner = await Post.findById(ownerId);
     if (!owner) return res.status(404).json({ error: `${ownerType} not found` });
 
     const addedFiles = [];
@@ -86,6 +88,11 @@ const attachFiles = async (req, res) => {
       } else if (ownerType === 'offer') {
         owner.files = owner.files || [];
         owner.files.push(fileDoc);
+        } else if (ownerType === 'post') {
+          owner.files = owner.files || [];
+          // Posts may include images; push file metadata
+          if (f.mimetype && f.mimetype.startsWith('image') && url) owner.images = owner.images || [], owner.images.push(url);
+          owner.files.push(fileDoc);
       }
 
       // cleanup local
