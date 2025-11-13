@@ -1,0 +1,90 @@
+{
+  "info": {
+    "_postman_id": "neosoq-payments-v1",
+    "name": "Neosoq Marketplace Payments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3500" },
+    { "key": "authToken", "value": "" },
+    { "key": "tapSecretKey", "value": "sk_test_xxx" },
+    { "key": "idempotencyKey", "value": "idem_example_123" }
+  ],
+  "item": [
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Topup (create session)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"redirectUrl\": \"https://example.com/ok\" }" },
+            "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet","topup"] }
+          }
+        },
+        {
+          "name": "Get Wallet",
+          "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/wallet", "host": ["{{baseUrl}}"], "path": ["wallet"] } }
+        },
+        {
+          "name": "Withdraw",
+          "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{ \"amount\": 10 }" }, "url": { "raw": "{{baseUrl}}/wallet/withdraw", "host": ["{{baseUrl}}"], "path": ["wallet","withdraw"] } }
+        }
+      ]
+    },
+    {
+      "name": "Escrow",
+      "item": [
+        { "name": "Create Escrow", "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{ \"workerId\": \"<workerId>\", \"amount\": 50 }" }, "url": { "raw": "{{baseUrl}}/escrow", "host": ["{{baseUrl}}"], "path": ["escrow"] } } },
+        { "name": "Confirm Escrow", "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/escrow/:id/confirm", "host": ["{{baseUrl}}"], "path": ["escrow",":id","confirm"] } } },
+        { "name": "Release Escrow", "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/escrow/:id/release", "host": ["{{baseUrl}}"], "path": ["escrow",":id","release"] } } },
+        { "name": "Cancel Escrow", "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/escrow/:id/cancel", "host": ["{{baseUrl}}"], "path": ["escrow",":id","cancel"] } } },
+        { "name": "Get Escrow", "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/escrow/:id", "host": ["{{baseUrl}}"], "path": ["escrow",":id"] } } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Force Release (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/escrow/:id/force-release", "host": ["{{baseUrl}}"], "path": ["escrow",":id","force-release"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Force Refund (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/escrow/:id/force-refund", "host": ["{{baseUrl}}"], "path": ["escrow",":id","force-refund"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Idempotency example: Topup replay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"redirectUrl\": \"https://example.com/ok\" }" },
+            "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet","topup"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
