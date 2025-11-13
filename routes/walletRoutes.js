@@ -9,6 +9,7 @@ router.post('/withdraw', verifyJWT, withdraw);
 router.get('/', verifyJWT, getWallet);
 
 // webhook should be unprotected endpoint called by Tap; we allow raw body
-router.post('/webhooks/tap', express.text({ type: '*/*' }), tapWebhook);
+// webhook should be an unprotected endpoint called by payment providers; we allow raw body
+router.post('/webhooks/myfatoorah', express.text({ type: '*/*' }), tapWebhook);
 
 module.exports = router;

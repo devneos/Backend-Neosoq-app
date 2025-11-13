@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Wallet = require('../models/Wallet');
 const Ledger = require('../models/Ledger');
-const { createCharge } = require('../services/tapService');
+const { createPayment } = require('../services/myfatoorahService');
 const crypto = require('crypto');
 const timeAgo = require('../helpers/timeAgo');
 const IdempotencyKey = require('../models/IdempotencyKey');
@@ -14,9 +14,12 @@ const topup = async (req, res) => {
     const { amount, idempotencyKey, redirectUrl } = req.body;
     if (!amount || Number(amount) <= 0) return res.status(400).json({ error: 'amount required' });
 
-    // create Tap charge/session
+    // create payment session via MyFatoorah ExecutePayment
     const ref = `wallet_topup_${userId}_${Date.now()}`;
-    const resp = await createCharge({ amount: Number(amount), currency: 'KWD', reference: ref, metadata: { userId, idempotencyKey }, redirect: redirectUrl });
+    if (!process.env.MYFATOORAH_API_KEY || !process.env.MYFATOORAH_BASE_URL) {
+      return res.status(500).json({ error: 'Payment provider not configured' });
+    }
+    const resp = await createPayment({ amount: Number(amount), currency: 'KWD', reference: ref, metadata: { userId, idempotencyKey }, redirect: redirectUrl });
 
     // return checkout url (depends on Tap response structure)
     const checkoutUrl = resp && resp.redirect && resp.redirect.url ? resp.redirect.url : (resp && resp.transaction && resp.transaction.url);
@@ -40,7 +43,7 @@ const topup = async (req, res) => {
   }
 };
 
-// POST /webhooks/tap -> Tap will call this
+// POST /webhooks/tap or /webhooks/myfatoorah -> payment provider will call this
 const tapWebhook = async (req, res) => {
   try {
     // Determine raw payload string robustly:
@@ -59,14 +62,15 @@ const tapWebhook = async (req, res) => {
     } else {
       raw = JSON.stringify(req.body);
     }
-    let sig = req.headers['tap-signature'] || req.headers['Tap-Signature'] || req.headers['tap-signature'.toLowerCase()];
-    const secret = process.env.TAP_SECRET_KEY || '';
-    if (secret) {
+  // accept either provider header and secret; prefer MyFatoorah if present
+  let sig = req.headers['myfatoorah-signature'] || req.headers['MyFatoorah-Signature'];
+  const secret = process.env.MYFATOORAH_SECRET_KEY || '';
+  if (secret) {
         if (process.env.NODE_ENV === 'test') {
           // In test environment be permissive: attempt verification but don't reject on mismatch
           try {
             if (!sig) {
-              console.warn('tapWebhook signature missing (test env)');
+              console.warn('payment webhook signature missing (test env)');
             } else {
               if (typeof sig === 'string' && sig.startsWith('sha256=')) sig = sig.slice(7);
               sig = (sig || '').toString().trim();
@@ -82,14 +86,14 @@ const tapWebhook = async (req, res) => {
                 const cBuf = Buffer.from(c, 'utf8');
                 if (cBuf.length === sigBuf.length && crypto.timingSafeEqual(cBuf, sigBuf)) { ok = true; break; }
               }
-              if (!ok) console.warn('tapWebhook signature mismatch (test env) - continuing');
+              if (!ok) console.warn('payment webhook signature mismatch (test env) - continuing');
             }
           } catch (e) {
-            console.warn('tapWebhook test-signature check error', e);
+            console.warn('payment webhook test-signature check error', e);
           }
         } else {
           if (!sig) {
-            console.error('tapWebhook signature missing');
+            console.error('payment webhook signature missing');
             return res.status(401).json({ error: 'Missing signature' });
           }
           // strip common prefixes like 'sha256='
@@ -120,8 +124,8 @@ const tapWebhook = async (req, res) => {
           if (!ok) {
             // debug: log signature and candidates to help tests
             try {
-              console.error('tapWebhook signature mismatch', { receivedSig: sig, candidates });
-            } catch (e) { console.error('tapWebhook signature mismatch (no debug)'); }
+              console.error('payment webhook signature mismatch', { receivedSig: sig, candidates });
+            } catch (e) { console.error('payment webhook signature mismatch (no debug)'); }
             return res.status(401).json({ error: 'Invalid signature' });
           }
         }

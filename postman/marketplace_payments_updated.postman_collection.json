@@ -1,14 +1,31 @@
 {
   "info": {
-    "_postman_id": "neosoq-payments-v1",
-    "name": "Neosoq Marketplace Payments",
+    "_postman_id": "neosoq-payments-v2",
+    "name": "Neosoq Marketplace Payments (MyFatoorah)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3500" },
     { "key": "authToken", "value": "" },
-    { "key": "tapSecretKey", "value": "sk_test_xxx" },
-    { "key": "idempotencyKey", "value": "idem_example_123" }
+    { "key": "myfatoorahApiKey", "value": "mf_test_xxx" },
+    { "key": "myfatoorahBaseUrl", "value": "https://apitest.myfatoorah.com" },
+    { "key": "idempotencyKey", "value": "idem_example_123" },
+    { "key": "myfatoorahSecret", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-generate an Idempotency-Key for requests",
+          "function uuidv4(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c=='x'?r:(r&0x3|0x8);return v.toString(16);});}",
+          "var id = uuidv4();",
+          "pm.collectionVariables.set('idempotencyKey', id);",
+          "console.log('Generated idempotencyKey', id);"
+        ]
+      }
+    }
   ],
   "item": [
     {
@@ -18,7 +35,11 @@
           "name": "Topup (create session)",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
             "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"redirectUrl\": \"https://example.com/ok\" }" },
             "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet","topup"] }
           }
@@ -81,6 +102,66 @@
             ],
             "body": { "mode": "raw", "raw": "{ \"amount\": 100, \"redirectUrl\": \"https://example.com/ok\" }" },
             "url": { "raw": "{{baseUrl}}/wallet/topup", "host": ["{{baseUrl}}"], "path": ["wallet","topup"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "MyFatoorah API",
+      "item": [
+        {
+          "name": "ExecutePayment (sample)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{myfatoorahApiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"InvoiceValue\": 100,\n  \"DisplayCurrencyIso\": \"KWD\",\n  \"CustomerName\": \"Test Customer\",\n  \"CustomerEmail\": \"customer@example.com\",\n  \"CallBackUrl\": \"https://yourshop.com/success\",\n  \"ErrorUrl\": \"https://yourshop.com/error\"\n}"
+            },
+            "url": { "raw": "{{myfatoorahBaseUrl}}/v2/ExecutePayment", "host": ["{{myfatoorahBaseUrl}}"], "path": ["v2","ExecutePayment"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Webhook: MyFatoorah payment (simulate)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Compute HMAC-SHA256 signature of the raw request body using collection variable `myfatoorahSecret` or environment `MYFATOORAH_SECRET_KEY`.\n",
+                  "const CryptoJS = require('crypto-js');\n",
+                  "const body = pm.request.body && pm.request.body.raw ? pm.request.body.raw : '';\n",
+                  "const secret = pm.collectionVariables.get('myfatoorahSecret') || pm.environment.get('MYFATOORAH_SECRET_KEY') || '';\n",
+                  "if (!secret) { console.warn('No myfatoorah secret configured in collection variable `myfatoorahSecret` or environment `MYFATOORAH_SECRET_KEY`. Signature will be empty.'); }\n",
+                  "const sigHex = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);\n",
+                  "pm.collectionVariables.set('myfatoorahSignature', sigHex);\n",
+                  "console.log('Computed MyFatoorah signature (hex):', sigHex);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "MyFatoorah-Signature", "value": "{{myfatoorahSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"object\": {\n      \"id\": \"tx_123456789\",\n      \"status\": \"paid\",\n      \"amount\": 100,\n      \"metadata\": { \"userId\": \"<userId>\", \"idempotencyKey\": \"{{idempotencyKey}}\" },\n      \"reference\": \"wallet_topup_<userId>_123456789\"\n    }\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/wallet/webhooks/myfatoorah", "host": ["{{baseUrl}}"], "path": ["wallet","webhooks","myfatoorah"] }
           },
           "response": []
         }

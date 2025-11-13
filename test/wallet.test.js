@@ -6,9 +6,9 @@ const Wallet = require('../models/Wallet');
 const Ledger = require('../models/Ledger');
 const jwt = require('jsonwebtoken');
 
-// Mock Tap service to avoid external calls during tests
-jest.mock('../services/tapService', () => ({
-  createCharge: jest.fn().mockResolvedValue({ redirect: { url: 'https://fake.checkout/1' }, id: 'sess_1', transaction: { id: 'tx_mock' } })
+// Mock MyFatoorah service so topup uses a consistent mocked response when configured
+jest.mock('../services/myfatoorahService', () => ({
+  createPayment: jest.fn().mockResolvedValue({ redirect: { url: 'https://fake.checkout/mf/1' }, id: 'mf_sess_1' })
 }));
 
 describe('Wallet topup/webhook flow (unit)', () => {
@@ -29,12 +29,12 @@ describe('Wallet topup/webhook flow (unit)', () => {
   });
 
   test('webhook credits wallet', async () => {
-    // simulate webhook payload
-    process.env.TAP_SECRET_KEY = process.env.TAP_SECRET_KEY || 'test_secret';
+  // simulate webhook payload (MyFatoorah secret used preferentially)
+  process.env.MYFATOORAH_SECRET_KEY = process.env.MYFATOORAH_SECRET_KEY || 'test_secret';
     const payload = { data: { id: 'tx123', amount: 100, status: 'paid', metadata: { userId: user._id.toString(), idempotencyKey: 'ik1' } } };
     const raw = JSON.stringify(payload);
-    const sig = require('crypto').createHmac('sha256', process.env.TAP_SECRET_KEY).update(raw).digest('hex');
-    const res = await request(app).post('/wallet/webhooks/tap').set('Tap-Signature', sig).send(raw);
+  const sig = require('crypto').createHmac('sha256', process.env.MYFATOORAH_SECRET_KEY).update(raw).digest('hex');
+  const res = await request(app).post('/wallet/webhooks/myfatoorah').set('MyFatoorah-Signature', sig).send(raw);
     expect(res.statusCode).toBe(200);
     const w = await Wallet.findOne({ userId: user._id });
     expect(w).toBeDefined();
