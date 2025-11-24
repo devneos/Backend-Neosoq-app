@@ -31,7 +31,7 @@ const createStaffInvite = async (req, res) => {
 
     // Compose frontend link
     const frontendBase = process.env.FRONTEND_URL || process.env.BASE_URL || '';
-    const link = `${frontendBase.replace(/\/$/, '')}/signup?token=${token}`;
+    const link = `${frontendBase.replace(/\/$/, '')}/auth/signup?token=${token}`;
 
     const message = `You have been invited to join Neosoq as a staff member. Click the link below to complete your account setup:\n\n${link}\n\nIf you did not expect this invite, please ignore this email.`;
 
