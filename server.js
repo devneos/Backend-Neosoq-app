@@ -55,6 +55,8 @@ app.use('/posts', require('./routes/postsRoutes'));
 app.use('/feed', require('./routes/feedRoutes'));
 app.use('/wallet', require('./routes/walletRoutes'));
 app.use('/escrow', require('./routes/escrowRoutes'));
+// Admin routes (staff invites)
+app.use('/admin', require('./routes/adminRoutes'));
 
 // 404 Handler
 app.all("*", (req, res) => {

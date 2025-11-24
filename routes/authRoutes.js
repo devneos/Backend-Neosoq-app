@@ -24,5 +24,7 @@ router.route("/logout").post(authController.logout);
 // route removed to avoid duplicate behavior.
 router.route("/verify-phone-code").post(authController.verifyPhoneCode);
 router.route("/complete-signup").post(authController.completeSignup);
+// Staff invite consumption
+router.route('/staff/complete-signup').post(authController.completeStaffSignup);
 
 module.exports = router;

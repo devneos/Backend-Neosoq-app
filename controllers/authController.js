@@ -19,6 +19,7 @@ require("dotenv").config();
 
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const Invite = require('../models/Invite');
 
 // Cookie options helper: in production we require Secure + SameSite=None for cross-site
 // flows. For local development (NODE_ENV !== 'production') we relax secure and use
@@ -832,6 +833,92 @@ const googleLogin = async (req, res) => {
   }
 };
 
+// @desc Complete staff signup using invite token
+// @route POST /auth/staff/complete-signup
+// @access Public
+const completeStaffSignup = async (req, res) => {
+  try {
+    const { token, username, password } = req.body;
+
+    if (!token || !username || !password) {
+      return res.status(400).json({ error: 'Token, username and password are required', success: false });
+    }
+
+    // Find invite
+    const invite = await Invite.findOne({ token }).exec();
+    if (!invite) return res.status(400).json({ error: 'Invalid or expired invite token', success: false });
+
+    if (invite.used) return res.status(400).json({ error: 'Invite already used', success: false });
+
+    if (invite.expiresAt <= new Date()) return res.status(400).json({ error: 'Invite has expired', success: false });
+
+    // Check if a user with this email already exists
+    const existingUser = await User.findOne({ email: invite.email }).exec();
+    if (existingUser) return res.status(400).json({ error: 'User with this email already exists', success: false });
+
+    // Create user with assigned roles/adminAccess
+    const hashed = await hashPassword(password);
+
+    const newUser = await User.create({
+      username,
+      email: invite.email,
+      password: hashed,
+      roles: invite.roles && invite.roles.length ? invite.roles : ['User'],
+      adminAccess: invite.adminAccess || [],
+      verified: true,
+      active: true,
+    });
+
+    // Mark invite as used
+    invite.used = true;
+    invite.usedAt = new Date();
+    await invite.save();
+
+    // Issue tokens (same as other flows)
+    const accessToken = jwt.sign(
+      {
+        UserInfo: {
+          userId: newUser._id,
+          verified: newUser.verified,
+          phoneNumber: newUser.phoneNumber,
+          img: newUser.profileImage,
+          username: newUser.username,
+          roles: newUser.roles,
+          position: newUser.position,
+          adminAccess: newUser.adminAccess,
+        },
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const refreshToken = jwt.sign(
+      { username: newUser.username },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.cookie('jwt', refreshToken, getCookieOptions());
+
+    return res.status(201).json({
+      message: 'Staff account created successfully',
+      success: true,
+      accessToken,
+      refreshToken,
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        roles: newUser.roles,
+        adminAccess: newUser.adminAccess,
+      }
+    });
+  } catch (error) {
+    console.error('completeStaffSignup error:', error);
+    return res.status(500).json({ error: 'Failed to complete staff signup', success: false });
+  }
+};
+
 module.exports = {
   sendLoginCode,
   verifyLoginCode,
@@ -845,4 +932,5 @@ module.exports = {
   verifyPhoneCode,
   completeSignup,
   googleLogin,
+  completeStaffSignup,
 };
