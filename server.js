@@ -57,6 +57,8 @@ app.use('/wallet', require('./routes/walletRoutes'));
 app.use('/escrow', require('./routes/escrowRoutes'));
 // Admin routes (staff invites)
 app.use('/admin', require('./routes/adminRoutes'));
+// Admin authentication (signin for admins/support/moderators)
+app.use('/admin/auth', require('./routes/adminAuthRoutes'));
 
 // 404 Handler
 app.all("*", (req, res) => {

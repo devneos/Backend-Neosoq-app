@@ -5,6 +5,21 @@
   },
   "item": [
     {
+      "name": "Admin Sign In",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"your_admin_password\"\n}"
+        },
+        "url": { "raw": "{{api_base_url}}/admin/auth/signin", "host": ["{{api_base_url}}"], "path": ["admin","auth","signin"] }
+      },
+      "response": []
+    },
+    {
       "name": "Create Staff Invite",
       "request": {
         "method": "POST",
