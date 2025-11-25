@@ -10,6 +10,7 @@ const OfferSchema = new mongoose.Schema({
   requestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Request', required: function() { return !this.listingId } },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   price: { type: Number, required: true },
+  quantity: { type: Number, default: null },
   proposalText: { type: LocalizedString },
   files: [{
     filename: String,

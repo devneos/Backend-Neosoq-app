@@ -59,6 +59,8 @@ app.use('/escrow', require('./routes/escrowRoutes'));
 app.use('/admin', require('./routes/adminRoutes'));
 // Admin authentication (signin for admins/support/moderators)
 app.use('/admin/auth', require('./routes/adminAuthRoutes'));
+// User content endpoints (listings, offers, posts, requests by user)
+app.use('/users', require('./routes/userContentRoutes'));
 
 // 404 Handler
 app.all("*", (req, res) => {

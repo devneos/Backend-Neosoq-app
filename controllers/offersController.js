@@ -9,6 +9,14 @@ const createOffer = async (req, res) => {
     if (!listingId && !requestId) return res.status(400).json({ error: 'listingId or requestId required' });
     if (!price) return res.status(400).json({ error: 'price required' });
 
+  // quantity is optional; normalize to null when missing or zero
+  let quantity = null;
+  if (Object.prototype.hasOwnProperty.call(req.body, 'quantity')) {
+    const rawQ = req.body.quantity;
+    const qNum = Number(rawQ);
+    if (!Number.isNaN(qNum) && qNum !== 0) quantity = qNum;
+  }
+
   // proposalText should be stored as localized object
   const { ensureLocalized } = require('../helpers/translate');
   let localizedProposal = undefined;
@@ -21,9 +29,11 @@ const createOffer = async (req, res) => {
       try { fileDocs = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files; } catch (e) { fileDocs = req.body.files; }
     }
 
-  const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), proposalText: localizedProposal, files: fileDocs });
+  const offer = await Offer.create({ listingId, requestId, userId: req.user?.id, price: Number(price), quantity, proposalText: localizedProposal, files: fileDocs });
     const payload = offer.toObject();
     payload.timeAgo = timeAgo(offer.createdAt);
+    // ensure quantity is null instead of 0 in responses
+    payload.quantity = payload.quantity === 0 ? null : payload.quantity;
     return res.status(201).json({ offer: payload });
   } catch (e) {
     console.error('createOffer', e);
@@ -68,6 +78,15 @@ const updateOffer = async (req, res) => {
     // handle localized proposalText update
     if (data.proposalText) {
       try { data.proposalText = await ensureLocalized(data.proposalText); } catch (e) { /* leave as-is */ }
+    }
+    // Normalize quantity on update: treat 0 or invalid as null
+    if (Object.prototype.hasOwnProperty.call(data, 'quantity')) {
+      const qNum = Number(data.quantity);
+      if (Number.isNaN(qNum) || qNum === 0) {
+        data.quantity = null;
+      } else {
+        data.quantity = qNum;
+      }
     }
     if (Array.isArray(newFiles) && newFiles.length) {
       for (const fdoc of newFiles) {
@@ -156,8 +175,9 @@ const listOffers = async (req, res) => {
     if (listingId) q.listingId = listingId;
     if (requestId) q.requestId = requestId;
     const all = await Offer.find(q).sort({ createdAt: -1 }).limit(100).lean();
-    const newOffers = all.slice(0,3).map(o => ({ ...o, timeAgo: timeAgo(o.createdAt) }));
-    const offers = all.slice(3).map(o => ({ ...o, timeAgo: timeAgo(o.createdAt) }));
+    const normalize = o => ({ ...o, timeAgo: timeAgo(o.createdAt), quantity: o.quantity === 0 ? null : o.quantity });
+    const newOffers = all.slice(0,3).map(normalize);
+    const offers = all.slice(3).map(normalize);
     return res.json({ new: newOffers, offers });
   } catch (e) {
     console.error('listOffers', e);
