@@ -1058,13 +1058,24 @@ const sendVerificationEmail = async (email, token) => {
 
 const sendTemplateEmail = async (email, message, header, attachments) => {
   try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    const transporterInfo = await ensureTransporter();
+    if (!transporterInfo) {
+      // No SMTP credentials — write to logs for development
+      const logsDir = path.join(__dirname, '..', 'logs');
+      try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
+      const logEntry = {
+        at: new Date().toISOString(),
+        to: email,
+        subject: header,
+        message,
+      };
+      const logFile = path.join(logsDir, 'email_worker.log');
+      require('fs').appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+      console.info('SMTP credentials not set — logged email to', logFile);
+      return header;
+    }
+
+    const transporter = transporterInfo.transporter;
 
     const htmlTemplate = `
     <!DOCTYPE html>
@@ -1080,7 +1091,7 @@ const sendTemplateEmail = async (email, message, header, attachments) => {
     `;
 
     const mailOptions = {
-      from: `Neosoq <${process.env.SENDER_EMAIL}>`,
+      from: process.env.SENDER_EMAIL ? `Neosoq <${process.env.SENDER_EMAIL}>` : 'no-reply@neosoq.local',
       to: email,
       subject: header,
       html: htmlTemplate,
@@ -1091,30 +1102,88 @@ const sendTemplateEmail = async (email, message, header, attachments) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', result && result.messageId ? result.messageId : result);
 
-    console.log("Email sent:", result);
+    if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
+      const preview = nodemailer.getTestMessageUrl(result);
+      console.info('Ethereal preview URL:', preview);
+    }
 
     return header;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error('Error sending email:', error);
     throw error;
   }
 };
-const ensureTransporter = () => {
-  // Create nodemailer transporter only when SMTP creds are present.
-  if (!process.env.SENDER_EMAIL || !process.env.APP_PASSWORD) return null;
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.SENDER_EMAIL,
-      pass: process.env.APP_PASSWORD,
-    },
-  });
+const ensureTransporter = async () => {
+  // Prefer explicit SMTP settings if provided
+  try {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      return { transporter };
+    }
+
+    // Backwards-compatible Gmail config (SENDER_EMAIL + APP_PASSWORD)
+    if (process.env.SENDER_EMAIL && process.env.APP_PASSWORD) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SENDER_EMAIL,
+          pass: process.env.APP_PASSWORD,
+        },
+      });
+      return { transporter };
+    }
+
+    // Development fallback: Ethereal test account when not in production
+    if (process.env.NODE_ENV !== 'production') {
+      const testAccount = await nodemailer.createTestAccount();
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      return { transporter, isTest: true, testAccount };
+    }
+
+    // No transporter available
+    return null;
+  } catch (err) {
+    console.error('ensureTransporter error:', err && err.message ? err.message : err);
+    return null;
+  }
 };
 
 const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
   try {
-    const transporter = ensureTransporter();
+    const transporterInfo = await ensureTransporter();
+    if (!transporterInfo) {
+      const logsDir = path.join(__dirname, '..', 'logs');
+      try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
+      const logEntry = {
+        at: new Date().toISOString(),
+        to,
+        subject,
+        message,
+      };
+      const logFile = path.join(logsDir, 'email_worker.log');
+      require('fs').appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+      console.info('SMTP credentials not set — logged email to', logFile);
+      return subject;
+    }
+    const transporter = transporterInfo.transporter;
 
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -1572,27 +1641,12 @@ const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
       attachments: attachments.length ? attachments : undefined,
     };
 
-    if (!transporter) {
-      // No SMTP credentials — write the email to a log for development and return as if sent.
-      const logsDir = path.join(__dirname, '..', 'logs');
-      try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
-      const logEntry = {
-        at: new Date().toISOString(),
-        to,
-        subject,
-        message,
-        mailOptions,
-      };
-      const logFile = path.join(logsDir, 'email_worker.log');
-      require('fs').appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
-      console.info('SMTP credentials not set — logged email to', logFile);
-      return subject;
-    }
-
     const result = await transporter.sendMail(mailOptions);
-
     console.log('Email sent:', result && result.messageId ? result.messageId : result);
-
+    if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
+      const preview = nodemailer.getTestMessageUrl(result);
+      console.info('Ethereal preview URL:', preview);
+    }
     return subject;
   } catch (error) {
     console.error("Error sending email:", error);
@@ -1602,13 +1656,22 @@ const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
 
 const sendContactMessage = async (email, message, fullname) => {
   try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    const transporterInfo = await ensureTransporter();
+    if (!transporterInfo) {
+      const logsDir = path.join(__dirname, '..', 'logs');
+      try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
+      const logEntry = {
+        at: new Date().toISOString(),
+        from: email,
+        fullname,
+        message,
+      };
+      const logFile = path.join(logsDir, 'email_worker.log');
+      require('fs').appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+      console.info('SMTP credentials not set — logged contact message to', logFile);
+      return 'Contact message logged';
+    }
+    const transporter = transporterInfo.transporter;
 
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
