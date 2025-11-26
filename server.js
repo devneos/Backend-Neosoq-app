@@ -18,11 +18,45 @@ if (require.main === module) {
   // Connect to MongoDB and start the app
   connectDB();
 
-  mongoose.connection.once("open", () => {
-      console.log("Connected to MongoDB");
-      // Start the server after the DB connection is open
-      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  });
+    mongoose.connection.once("open", () => {
+            console.log("Connected to MongoDB");
+                        // Start the server after the DB connection is open
+                        const http = require('http');
+                        const server = http.createServer(app);
+
+                        // Try to attach Socket.IO if available, but don't crash if it's missing
+                        try {
+                            // require may throw if socket.io is not installed in this environment
+                            const { Server } = require('socket.io');
+                            const io = new Server(server, { cors: { origin: '*' } });
+
+                            // Attach io instance to app so controllers can emit events
+                            app.set('io', io);
+
+                            io.on('connection', (socket) => {
+                                socket.on('join', (conversationId) => {
+                                    socket.join(String(conversationId));
+                                });
+                                socket.on('leave', (conversationId) => {
+                                    socket.leave(String(conversationId));
+                                });
+                                socket.on('send_message', async (payload) => {
+                                    // payload: { conversationId, sender, body, attachments }
+                                    try {
+                                        const ChatMessage = require('./models/ChatMessage');
+                                        const msg = await ChatMessage.create({ conversationId: payload.conversationId, sender: payload.sender, body: payload.body, attachments: payload.attachments || [] });
+                                        io.to(String(payload.conversationId)).emit('message', msg);
+                                    } catch (e) {
+                                        console.error('socket send_message error', e);
+                                    }
+                                });
+                            });
+                        } catch (socketErr) {
+                            console.warn('Socket.IO not available — realtime features disabled.', socketErr && socketErr.code === 'MODULE_NOT_FOUND' ? '' : socketErr);
+                        }
+
+                        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    });
 
   mongoose.connection.on("error", (err) => {
       console.log(err);
@@ -55,6 +89,13 @@ app.use('/posts', require('./routes/postsRoutes'));
 app.use('/feed', require('./routes/feedRoutes'));
 app.use('/wallet', require('./routes/walletRoutes'));
 app.use('/escrow', require('./routes/escrowRoutes'));
+app.use('/promotions', require('./routes/promotionsRoutes'));
+app.use('/chat', require('./routes/chatRoutes'));
+app.use('/follow', require('./routes/followRoutes'));
+app.use('/notifications', require('./routes/notificationsRoutes'));
+app.use('/saved', require('./routes/savedRoutes'));
+app.use('/account', require('./routes/accountRoutes'));
+app.use('/profile', require('./routes/profileRoutes'));
 // Admin routes (staff invites)
 app.use('/admin', require('./routes/adminRoutes'));
 // Admin authentication (signin for admins/support/moderators)

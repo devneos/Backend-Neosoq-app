@@ -16,7 +16,11 @@ const uploadFile = async (filePath, options = {}) => {
 };
 
 const destroyFile = async (publicId) => {
-  if (!process.env.CLOUDINARY_URL || !publicId) return null;
+  if (!publicId) return null;
+  // If cloudinary isn't configured or uploader.destroy isn't available, skip remote deletion
+  if (!process.env.CLOUDINARY_URL || !cloudinary || !cloudinary.uploader || typeof cloudinary.uploader.destroy !== 'function') {
+    return null;
+  }
   try {
     const res = await cloudinary.uploader.destroy(publicId, { resource_type: 'auto' });
     return res;
@@ -26,4 +30,4 @@ const destroyFile = async (publicId) => {
   }
 };
 
-module.exports = { uploadFile, cloudinary };
+module.exports = { uploadFile, cloudinary, destroyFile };

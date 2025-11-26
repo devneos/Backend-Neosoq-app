@@ -21,15 +21,88 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
   console.info("Twilio credentials not set; SMS functionality disabled.");
 }
 
+// Optional SendGrid fallback (use API when SMTP is unavailable)
+let sgMail = null;
+try {
+  sgMail = require('@sendgrid/mail');
+  if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
+} catch (e) {
+  // SendGrid package not installed — fallback will be skipped.
+  sgMail = null;
+}
+
+const createSmtpTransport = () => {
+  const host = process.env.SMTP_HOST || process.env.SMTP_HOSTNAME || 'smtp.gmail.com';
+  const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465;
+  const secure = (process.env.SMTP_SECURE === 'true') || port === 465;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER || process.env.SENDER_EMAIL,
+      pass: process.env.SMTP_PASS || process.env.APP_PASSWORD,
+    },
+    // timeouts help surfacing ETIMEDOUT quickly and avoid long hangs
+    connectionTimeout: process.env.SMTP_CONNECTION_TIMEOUT ? Number(process.env.SMTP_CONNECTION_TIMEOUT) : 30000,
+    greetingTimeout: process.env.SMTP_GREETING_TIMEOUT ? Number(process.env.SMTP_GREETING_TIMEOUT) : 30000,
+    socketTimeout: process.env.SMTP_SOCKET_TIMEOUT ? Number(process.env.SMTP_SOCKET_TIMEOUT) : 30000,
+    tls: {
+      // In production you typically want to verify; keep configurable for local testing
+      rejectUnauthorized: process.env.SMTP_REJECT_UNAUTHORIZED !== 'false',
+    },
+  });
+};
+
+const sendEmail = async (mailOptions) => {
+  const transport = createSmtpTransport();
+  try {
+    const res = await transport.sendMail(mailOptions);
+    if (process.env.NODE_ENV !== 'test') {
+      // avoid logging credentials — log only metadata
+      // eslint-disable-next-line no-console
+      console.log('Email sent via SMTP', { to: mailOptions.to, subject: mailOptions.subject, provider: 'smtp' });
+    }
+    return res;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error sending email via SMTP:', { message: err && err.message, code: err && err.code, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT });
+
+    // If SendGrid is configured, try API fallback for common connection errors
+    const retriable = err && (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET');
+    if (retriable && sgMail && process.env.SENDGRID_API_KEY) {
+      try {
+        const sgMsg = {
+          to: mailOptions.to,
+          from: mailOptions.from || process.env.SENDER_EMAIL,
+          subject: mailOptions.subject,
+        };
+        if (mailOptions.html) sgMsg.html = mailOptions.html;
+        if (mailOptions.text) sgMsg.text = mailOptions.text;
+
+        const sgRes = await sgMail.send(sgMsg);
+        // eslint-disable-next-line no-console
+        console.log('Email sent via SendGrid fallback', { to: mailOptions.to, subject: mailOptions.subject });
+        return { provider: 'sendgrid', result: sgRes };
+      } catch (sgErr) {
+        // eslint-disable-next-line no-console
+        console.error('SendGrid fallback failed:', sgErr && (sgErr.message || sgErr));
+        // rethrow original SMTP error for upstream handling
+        throw err;
+      }
+    }
+
+    throw err;
+  }
+};
+
 const sendOTPEmail = async (email, token) => {
   try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    // Transport will be created by centralized helper which includes timeouts
+    // and an optional SendGrid fallback: use `sendEmail(mailOptions)` below.
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html
@@ -505,9 +578,11 @@ const sendOTPEmail = async (email, token) => {
       html: htmlTemplate,
     };
 
-    const result = await transporter.sendMail(mailOptions);
+    const result = await sendEmail(mailOptions);
 
-    console.log("Email sent:", result);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log("Email sent:", result);
+    }
 
     return "Verification email sent successfully";
   } catch (error) {
@@ -549,13 +624,7 @@ const sendVerificationEmail = async (email, token) => {
   try {
     const verificationLink = `${process.env.BASE_URL}/auth/verify-email?token=${token}`;
 
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    // use centralized sendEmail(mailOptions) which adds timeouts and optional fallback
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html
@@ -1045,7 +1114,7 @@ const sendVerificationEmail = async (email, token) => {
       html: htmlTemplate,
     };
 
-    const result = await transporter.sendMail(mailOptions);
+    const result = await sendEmail(mailOptions);
 
     console.log("Email sent:", result);
 
@@ -1101,12 +1170,27 @@ const sendTemplateEmail = async (email, message, header, attachments) => {
       })),
     };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', result && result.messageId ? result.messageId : result);
+    let result;
+    try {
+      result = await transporter.sendMail(mailOptions);
+      if (process.env.NODE_ENV !== 'test') {
+        console.log('Email sent:', result && result.messageId ? result.messageId : result);
 
-    if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
-      const preview = nodemailer.getTestMessageUrl(result);
-      console.info('Ethereal preview URL:', preview);
+        if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
+          const preview = nodemailer.getTestMessageUrl(result);
+          console.info('Ethereal preview URL:', preview);
+        }
+      }
+    } catch (err) {
+      console.error('Error sending via transporter, attempting fallback:', err && err.message ? err.message : err);
+      // attempt API/SPI fallback
+      try {
+        const fb = await sendEmail(mailOptions);
+        if (process.env.NODE_ENV !== 'test') console.log('Email sent via fallback', fb);
+      } catch (fbErr) {
+        console.error('Fallback also failed:', fbErr && fbErr.message ? fbErr.message : fbErr);
+        throw err;
+      }
     }
 
     return header;
@@ -1641,11 +1725,25 @@ const sendTemplateEmailWithAttachment = async (to, message, subject, file) => {
       attachments: attachments.length ? attachments : undefined,
     };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', result && result.messageId ? result.messageId : result);
-    if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
-      const preview = nodemailer.getTestMessageUrl(result);
-      console.info('Ethereal preview URL:', preview);
+    let result;
+    try {
+      result = await transporter.sendMail(mailOptions);
+      if (process.env.NODE_ENV !== 'test') {
+        console.log('Email sent:', result && result.messageId ? result.messageId : result);
+        if (transporterInfo.isTest && nodemailer.getTestMessageUrl) {
+          const preview = nodemailer.getTestMessageUrl(result);
+          console.info('Ethereal preview URL:', preview);
+        }
+      }
+    } catch (err) {
+      console.error('Error sending via transporter, attempting fallback:', err && err.message ? err.message : err);
+      try {
+        const fb = await sendEmail(mailOptions);
+        if (process.env.NODE_ENV !== 'test') console.log('Email sent via fallback', fb);
+      } catch (fbErr) {
+        console.error('Fallback also failed:', fbErr && fbErr.message ? fbErr.message : fbErr);
+        throw err;
+      }
     }
     return subject;
   } catch (error) {
@@ -2117,11 +2215,21 @@ const sendContactMessage = async (email, message, fullname) => {
       html: htmlTemplate,
     };
 
-    const result = await transporter.sendMail(mailOptions);
-
-    console.log("Email sent:", result);
-
-    return "Email sent successfully";
+    try {
+      const result = await transporter.sendMail(mailOptions);
+      console.log("Email sent:", result);
+      return "Email sent successfully";
+    } catch (err) {
+      console.error('Error sending via transporter, attempting fallback:', err && err.message ? err.message : err);
+      try {
+        const fb = await sendEmail(mailOptions);
+        console.log('Email sent via fallback', fb);
+        return "Email sent successfully";
+      } catch (fbErr) {
+        console.error('Fallback also failed:', fbErr && fbErr.message ? fbErr.message : fbErr);
+        throw err;
+      }
+    }
   } catch (error) {
     console.error("Error sending email:", error);
     throw error;
@@ -2130,13 +2238,7 @@ const sendContactMessage = async (email, message, fullname) => {
 
 const receiveContactMessage = async (email, fullname) => {
   try {
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.SENDER_EMAIL,
-        pass: process.env.APP_PASSWORD,
-      },
-    });
+    // use centralized sendEmail(mailOptions) which includes timeouts and fallback
 
     const htmlTemplate = `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -2580,11 +2682,21 @@ const receiveContactMessage = async (email, fullname) => {
       html: htmlTemplate,
     };
 
-    const result = await transporter.sendMail(mailOptions);
-
-    console.log("Email sent:", result);
-
-    return "Email sent successfully";
+    try {
+      const result = await transporter.sendMail(mailOptions);
+      console.log("Email sent:", result);
+      return "Email sent successfully";
+    } catch (err) {
+      console.error('Error sending via transporter, attempting fallback:', err && err.message ? err.message : err);
+      try {
+        const fb = await sendEmail(mailOptions);
+        console.log('Email sent via fallback', fb);
+        return "Email sent successfully";
+      } catch (fbErr) {
+        console.error('Fallback also failed:', fbErr && fbErr.message ? fbErr.message : fbErr);
+        throw err;
+      }
+    }
   } catch (error) {
     console.error("Error sending email:", error);
     throw error;

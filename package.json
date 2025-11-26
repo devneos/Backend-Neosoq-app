@@ -6,7 +6,10 @@
     "scripts": {
         "start": "node server",
         "dev": "nodemon server",
-        "test": "jest --runInBand --detectOpenHandles"
+        "test": "jest --runInBand --detectOpenHandles",
+        "worker:notifications": "node workers/notificationWorker.js",
+        "worker:notifications:queue": "node workers/notificationQueueWorker.js",
+        "worker:notifications:enqueue": "node workers/notificationEnqueue.js"
     },
     "keywords": [],
     "author": "",

@@ -7,7 +7,7 @@ const timeAgo = require('../helpers/timeAgo');
 
 // Return minimal user profile for frontend use
 const fetchUserProfile = async (userId) => {
-  const u = await User.findById(userId).select('username profileImage roles position country region rating ratingCount sellerType').lean();
+  const u = await User.findById(userId).select('username profileImage roles position country region rating ratingCount sellerType followerCount followingCount').lean();
   if (!u) return null;
   return {
     id: u._id,
@@ -20,6 +20,9 @@ const fetchUserProfile = async (userId) => {
     rating: u.rating || 5.0,
     ratingCount: u.ratingCount || 0,
     sellerType: u.sellerType || 'seller'
+    ,
+    followerCount: u.followerCount || 0,
+    followingCount: u.followingCount || 0
   };
 };
 

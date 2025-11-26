@@ -26,6 +26,7 @@ const ListingSchema = new mongoose.Schema({
   files: [FileSchema],
   images: [String], // image URLs
   reviewCompleted: { type: Boolean, default: false },
+  reviewNote: { type: String, default: '' },
   status: { type: String, enum: ['open', 'closed', 'awarded'], default: 'open' },
   isPromoted: { type: Boolean, default: false },
   likesCount: { type: Number, default: 0 },

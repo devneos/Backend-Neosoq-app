@@ -2,6 +2,7 @@ const Offer = require('../models/Offer');
 const Listing = require('../models/Listing');
 const Request = require('../models/Request');
 const timeAgo = require('../helpers/timeAgo');
+const { createNotification } = require('./notificationsController');
 
 const createOffer = async (req, res) => {
   try {
@@ -34,12 +35,24 @@ const createOffer = async (req, res) => {
     payload.timeAgo = timeAgo(offer.createdAt);
     // ensure quantity is null instead of 0 in responses
     payload.quantity = payload.quantity === 0 ? null : payload.quantity;
+    // Notify the owner of the listing/request
+    try {
+      if (offer.listingId) {
+        const listing = await Listing.findById(offer.listingId).select('createdBy title').lean();
+        if (listing && listing.createdBy) await createNotification({ userId: listing.createdBy, actorId: offer.userId, type: 'offer_created', title: 'New offer', body: `You have a new offer on ${listing.title || 'your listing'}`, link: `/listings/${offer.listingId}`, data: { offerId: offer._id } });
+      }
+      if (offer.requestId) {
+        const request = await Request.findById(offer.requestId).select('createdBy title').lean();
+        if (request && request.createdBy) await createNotification({ userId: request.createdBy, actorId: offer.userId, type: 'offer_created', title: 'New offer', body: `You have a new offer on ${request.title || 'your request'}`, link: `/requests/${offer.requestId}`, data: { offerId: offer._id } });
+      }
+    } catch (e) { /* ignore */ }
     return res.status(201).json({ offer: payload });
   } catch (e) {
     console.error('createOffer', e);
     return res.status(500).json({ error: 'Failed to create offer' });
   }
 };
+
 
 const updateOffer = async (req, res) => {
   try {
@@ -144,6 +157,10 @@ const acceptOffer = async (req, res) => {
       if (offer.requestId) {
         await Request.findByIdAndUpdate(offer.requestId, { status: 'awarded', awardedOffer: offer._id, awardedAt: new Date() });
       }
+    // notify offer creator that their offer was accepted
+    try {
+      if (offer.userId) await createNotification({ userId: offer.userId, actorId: req.user?.id, type: 'offer_accepted', title: 'Offer accepted', body: 'Your offer was accepted', link: offer.listingId ? `/listings/${offer.listingId}` : `/requests/${offer.requestId}`, data: { offerId: offer._id } });
+    } catch (e) { /* ignore */ }
     return res.json({ offer });
   } catch (e) {
     console.error('acceptOffer', e);

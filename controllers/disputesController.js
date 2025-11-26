@@ -8,6 +8,18 @@ const createDispute = async (req, res) => {
     let localizedDesc = undefined;
     if (description) localizedDesc = await ensureLocalized(description);
     const d = await Dispute.create({ createdBy: req.user?.id, accusedUser, issueType, description: localizedDesc });
+    // Notify the accused user and admins
+    try {
+      const { createNotification } = require('./notificationsController');
+      if (accusedUser) {
+        await createNotification({ userId: accusedUser, actorId: req.user?.id, type: 'dispute_created', title: 'New dispute', body: `A dispute was filed against you: ${issueType}`, link: `/disputes/${d._id}`, data: { disputeId: d._id } });
+      }
+      // Optionally notify staff/admins: we'll create a generic admin notification (userId null handled by worker/email)
+      await createNotification({ userId: process.env.ADMIN_NOTIFICATIONS_USER || null, actorId: req.user?.id, type: 'dispute_reported', title: 'Dispute reported', body: `Dispute ${d._id} reported: ${issueType}`, link: `/admin/disputes/${d._id}`, data: { disputeId: d._id } });
+    } catch (notifyErr) {
+      console.warn('Failed to create notification for dispute:', notifyErr && notifyErr.message ? notifyErr.message : notifyErr);
+    }
+
     return res.status(201).json({ dispute: d });
   } catch (e) {
     console.error('createDispute', e);

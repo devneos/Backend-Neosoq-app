@@ -20,6 +20,15 @@ const createReview = async (req, res) => {
     if (agg && agg[0]) {
       await User.findByIdAndUpdate(reviewedUserId, { rating: agg[0].avg, ratingCount: agg[0].count });
     }
+    // Notify the reviewed user
+    try {
+      const { createNotification } = require('./notificationsController');
+      if (reviewedUserId) {
+        await createNotification({ userId: reviewedUserId, actorId: req.user?.id, type: 'review_created', title: 'New review', body: `You received a new review (${rating} stars)`, link: `/users/${reviewedUserId}/reviews`, data: { reviewId: review._id } });
+      }
+    } catch (notifyErr) {
+      console.warn('Failed to create notification for review:', notifyErr && notifyErr.message ? notifyErr.message : notifyErr);
+    }
     return res.status(201).json({ review });
   } catch (e) {
     console.error('createReview', e);

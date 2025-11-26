@@ -55,6 +55,8 @@ const UserSchema = new Schema({
     default: false,
   },
   profileImage: String,
+  name: String,
+  bio: String,
   password: {
     type: String,
     required: false, // No longer required for phone-based auth
@@ -62,6 +64,9 @@ const UserSchema = new Schema({
   // Aggregate rating fields
   rating: { type: Number, default: 5.0 },
   ratingCount: { type: Number, default: 0 },
+  // Social counts
+  followerCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
   // Seller type and location info
   sellerType: { type: String, default: 'seller' },
   location: {
