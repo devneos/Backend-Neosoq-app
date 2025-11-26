@@ -152,6 +152,42 @@ const dashboardCards = async (req, res, next) => {
   }
 };
 
+const categoryDistribution = async (req, res, next) => {
+  try {
+    // accept optional date range via query (start, end) or preset
+    const { start, end } = parseRange(req.query);
+    const match = { createdAt: { $gte: start, $lte: end } };
+
+    // aggregate listings by category
+    const Listing = require('../../models/Listing');
+    const pipeline = [
+      { $match: match },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $project: { category: '$_id', count: 1, _id: 0 } },
+    ];
+
+    const rows = await Listing.aggregate(pipeline);
+    const total = rows.reduce((s, r) => s + (r.count || 0), 0);
+
+    // ensure the requested categories appear and compute percentages
+    const categories = ['Automotive', 'Electronics', 'Services', 'Furniture'];
+    const map = {};
+    rows.forEach(r => { map[r.category] = r.count; });
+
+    const data = categories.map(c => ({ category: c, count: map[c] || 0, percent: total ? Math.round(((map[c] || 0) / total) * 10000) / 100 : 0 }));
+
+    // other bucket for remaining categories
+    const knownCount = data.reduce((s, d) => s + d.count, 0);
+    const otherCount = total - knownCount;
+    if (otherCount > 0) data.push({ category: 'Other', count: otherCount, percent: total ? Math.round((otherCount / total) * 10000) / 100 : 0 });
+
+    res.json({ total, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // helper: create ObjectId from date for user queries
 function mongooseObjectIdFromDate(d) {
   let hexSeconds = Math.floor(d.getTime() / 1000).toString(16);
@@ -159,4 +195,4 @@ function mongooseObjectIdFromDate(d) {
   return new (require('mongoose').Types.ObjectId)(hexSeconds + '0000000000000000');
 }
 
-module.exports = { revenueTrend, monthlyTransactions, topPerformers, dashboardCards };
+module.exports = { revenueTrend, monthlyTransactions, topPerformers, dashboardCards, categoryDistribution };

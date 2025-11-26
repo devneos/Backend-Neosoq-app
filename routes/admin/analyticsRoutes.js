@@ -8,5 +8,6 @@ router.get('/revenue-trend', verifyJWT, isAdmin, revenueTrend);
 router.get('/monthly-transactions', verifyJWT, isAdmin, monthlyTransactions);
 router.get('/top-performers', verifyJWT, isAdmin, topPerformers);
 router.get('/dashboard-cards', verifyJWT, isAdmin, dashboardCards);
+router.get('/category-distribution', verifyJWT, isAdmin, require('../../controllers/admin/analyticsController').categoryDistribution);
 
 module.exports = router;

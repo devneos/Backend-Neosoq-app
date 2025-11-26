@@ -1,0 +1,104 @@
+{
+  "info": {
+    "name": "Neosoq - Implemented Features (profile, saved, notifications)",
+    "_postman_id": "neosoq-new-features-collection-v2",
+    "description": "Postman collection for the features implemented: profile edit, saved items, notifications, account-close, reviews, disputes. Use `authToken` env var (Bearer token) for protected routes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth: Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}" },
+        "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"token\": \"<JWT>\", \"user\": { \"id\": "<id>", \"email\": \"user@example.com\" } }" } ]
+    },
+    {
+      "name": "Profile: Edit",
+      "request": {
+        "method": "PUT",
+        "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Alice Example\",\n  \"photo\": \"https://.../me.jpg\",\n  \"phone\": \"+96512345678\",\n  \"address\": \"Kuwait City\",\n  \"bio\": \"I build things\"\n}" },
+        "url": { "raw": "{{baseUrl}}/profile/edit", "host": ["{{baseUrl}}"], "path": ["profile","edit"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"user\": { \"_id\": \"...\", \"username\": \"Alice Example\", \"profileImage\": \"https://...\" } }" } ]
+    },
+    {
+      "name": "Saved Items: Add",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"itemType\": \"listing\",\n  \"itemId\": \"64a2f...\",\n  \"meta\": { \"title\": \"Nice chair\" }\n}" },
+        "url": { "raw": "{{baseUrl}}/saved", "host": ["{{baseUrl}}"], "path": ["saved"] }
+      },
+      "response": [ { "name": "201 Created", "code": 201, "_body": "{ \"saved\": { \"_id\": \"..\", \"itemType\": \"listing\" } }" } ]
+    },
+    {
+      "name": "Saved Items: List",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/saved?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["saved"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" } ] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"saved\": [ /* items */ ], \"page\":1, \"limit\":20, \"total\": 4 }" } ]
+    },
+    {
+      "name": "Saved Items: Delete",
+      "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/saved/{{savedId}}", "host": ["{{baseUrl}}"], "path": ["saved","{{savedId}}"] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+    },
+    {
+      "name": "Notifications: List",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/notifications?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["notifications"], "query": [ { "key": "page", "value": "1" }, { "key": "limit", "value": "20" } ] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"notifications\": [ { \"title\": \"New message\", \"body\": \"You've got mail\", \"read\": false } ], \"page\":1, \"limit\":20, \"total\": 1 }" } ]
+    },
+    {
+      "name": "Notifications: Mark All Read",
+      "request": { "method": "PUT", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{baseUrl}}/notifications/read", "host": ["{{baseUrl}}"], "path": ["notifications","read"] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+    },
+    {
+      "name": "Notifications: Clear All",
+      "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/notifications/clear", "host": ["{{baseUrl}}"], "path": ["notifications","clear"] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+    },
+    {
+      "name": "Reviews: Create",
+      "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"reviewedUserId\": \"64a2f...\",\n  \"rating\": 5,\n  \"text\": \"Great job\"\n}" }, "url": { "raw": "{{baseUrl}}/reviews", "host": ["{{baseUrl}}"], "path": ["reviews"] } },
+      "response": [ { "name": "201 Created", "code": 201, "_body": "{ \"review\": { \"_id\": "...", \"rating\":5 } }" } ]
+    },
+    {
+      "name": "Disputes: Create",
+      "request": { "method": "POST", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" } ], "body": { "mode": "raw", "raw": "{\n  \"accusedUser\": \"64a2f...\",\n  \"issueType\": \"fraud\",\n  \"description\": \"Offensive behavior\"\n}" }, "url": { "raw": "{{baseUrl}}/disputes", "host": ["{{baseUrl}}"], "path": ["disputes"] } },
+      "response": [ { "name": "201 Created", "code": 201, "_body": "{ \"dispute\": { \"_id\": "..." } }" } ]
+    },
+    {
+      "name": "Account: Close",
+      "request": { "method": "DELETE", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/account/close", "host": ["{{baseUrl}}"], "path": ["account","close"] } },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+    }
+    ,
+    {
+      "name": "Admin: Revenue Trend (GET /admin/analytics/revenue-trend)",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ],
+        "url": { "raw": "{{baseUrl}}/admin/analytics/revenue-trend?range=1y", "host": ["{{baseUrl}}"], "path": ["admin","analytics","revenue-trend"], "query": [ { "key": "range", "value": "1y" } ] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"data\": [ { \"period\": \"2025-01\", \"revenue\": 12345 }, ... ] }" } ]
+    },
+    {
+      "name": "Admin: Monthly Transactions (GET /admin/analytics/monthly-transactions)",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/admin/analytics/monthly-transactions?months=12", "host": ["{{baseUrl}}"], "path": ["admin","analytics","monthly-transactions"], "query": [ { "key": "months", "value": "12" } ] } },
+    {
+      "name": "Admin: Top Performers (GET /admin/analytics/top-performers)",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/admin/analytics/top-performers?limit=5", "host": ["{{baseUrl}}"], "path": ["admin","analytics","top-performers"], "query": [ { "key": "limit", "value": "5" } ] } },
+    {
+      "name": "Admin: Dashboard Cards (GET /admin/analytics/dashboard-cards)",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/admin/analytics/dashboard-cards", "host": ["{{baseUrl}}"], "path": ["admin","analytics","dashboard-cards"] } },
+    {
+      "name": "Admin: Category Distribution (GET /admin/analytics/category-distribution)",
+      "request": { "method": "GET", "header": [ { "key": "Authorization", "value": "Bearer {{authToken}}" } ], "url": { "raw": "{{baseUrl}}/admin/analytics/category-distribution?range=1y", "host": ["{{baseUrl}}"], "path": ["admin","analytics","category-distribution"], "query": [ { "key": "range", "value": "1y" } ] } },
+    
+  ],
+  "variable": [ { "key": "baseUrl", "value": "http://localhost:3500" }, { "key": "authToken", "value": "" }, { "key": "savedId", "value": "" }, { "key": "ADMIN_NOTIFICATIONS_USER", "value": "" } ]
+}
