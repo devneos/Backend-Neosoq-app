@@ -49,6 +49,8 @@ const UserSchema = new Schema({
     type: Boolean,
     default: true,
   },
+  // Reason for suspension/ban (set by admin)
+  suspendReason: { type: String, default: null },
   address: String,
   verified: {
     type: Boolean,
