@@ -1,0 +1,3759 @@
+{
+  "info": {
+    "name": "Neosoq API — Full Surface (2025-11)",
+    "_postman_id": "neosoq-api-detailed",
+    "description": "Comprehensive Postman collection covering customer, marketplace, wallet/escrow, and admin APIs with sample payloads and notes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3500"
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Phone OTP, email/password, and Google sign-in flows.",
+      "item": [
+        {
+          "name": "Send Login Code (Phone OTP)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/send-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "send-code"
+              ]
+            },
+            "description": "Kick off phone-based login or signup by sending a 6-digit OTP. Existing verified users can log in; new phones receive a verification code with `isNewUser: true` in the controller response.\n\nSample Request:\n{\n  \"phoneNumber\": \"+96512345678\"\n}\n\nSample Response:\n{\n  \"message\": \"Login verification code sent successfully\",\n  \"success\": true\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+96512345678\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Verify Login Code",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "description": "Validate the OTP and receive short-lived access token plus refresh token (also set as `jwt` cookie).\n\nSample Request:\n{\n  \"phoneNumber\": \"+96512345678\",\n  \"verificationCode\": \"123456\"\n}\n\nSample Response:\n{\n  \"accessToken\": \"<access-jwt>\",\n  \"refreshToken\": \"<refresh-jwt>\",\n  \"user\": {\n    \"id\": \"64f0d1...\",\n    \"username\": \"ayesha\",\n    \"phoneNumber\": \"+96512345678\",\n    \"verified\": true,\n    \"roles\": [\n      \"User\"\n    ]\n  }\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+96512345678\",\n  \"verificationCode\": \"123456\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Register (Email + Password)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Create a basic account with email/password. Backend hashes the password, stores roles, and emails an OTP.\n\nNotes:\n- Password must be at least 10 characters.\n\nSample Request:\n{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"country\": \"Kuwait\",\n  \"region\": \"Ahmadi\",\n  \"phone\": \"+96522223344\",\n  \"password\": \"Str0ngPass!@#\"\n}\n\nSample Response:\n{\n  \"status\": 200,\n  \"message\": \"Registered Successfully\"\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"country\": \"Kuwait\",\n  \"region\": \"Ahmadi\",\n  \"phone\": \"+96522223344\",\n  \"password\": \"Str0ngPass!@#\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Verify Phone Code (Signup)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-phone-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-phone-code"
+              ]
+            },
+            "description": "Confirm SMS verification for new accounts before allowing full signup.\n\nSample Request:\n{\n  \"phoneNumber\": \"+96522223344\",\n  \"token\": \"891234\"\n}\n\nSample Response:\n{\n  \"success\": true,\n  \"message\": \"Phone verified\"\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+96522223344\",\n  \"token\": \"891234\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Complete Signup",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/complete-signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "complete-signup"
+              ]
+            },
+            "description": "Finish onboarding after phone verification (and optional invite). Returns tokens identical to `/auth/login/verify`.\n\nSample Request:\n{\n  \"phoneNumber\": \"+96522223344\",\n  \"username\": \"johnny\",\n  \"password\": \"Str0ngPass!@#\",\n  \"inviteToken\": null\n}\n\nSample Response:\n{\n  \"accessToken\": \"<access>\",\n  \"refreshToken\": \"<refresh>\",\n  \"user\": {\n    \"id\": \"64f0d1...\",\n    \"username\": \"johnny\",\n    \"roles\": [\n      \"User\"\n    ]\n  }\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+96522223344\",\n  \"username\": \"johnny\",\n  \"password\": \"Str0ngPass!@#\",\n  \"inviteToken\": null\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Complete Staff Signup",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/staff/complete-signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "staff",
+                "complete-signup"
+              ]
+            },
+            "description": "Consume an invite created via `/admin/staff/invite` to create staff/admin accounts.\n\nSample Request:\n{\n  \"token\": \"invite-token-from-email\",\n  \"name\": \"Support Lead\",\n  \"password\": \"Sup3rSecure!!\"\n}\n\nSample Response:\n{\n  \"message\": \"Staff account created\",\n  \"accessToken\": \"<access>\",\n  \"refreshToken\": \"<refresh>\"\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"invite-token-from-email\",\n  \"name\": \"Support Lead\",\n  \"password\": \"Sup3rSecure!!\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Google Login (Token Sign-In)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "google"
+              ]
+            },
+            "description": "Verify a Google ID token server-side and issue platform JWTs.\n\nSample Request:\n{\n  \"idToken\": \"<google-id-token>\"\n}\n\nSample Response:\n{\n  \"accessToken\": \"<access>\",\n  \"refreshToken\": \"<refresh>\",\n  \"user\": {\n    \"id\": \"64f0d1...\",\n    \"email\": \"john@example.com\"\n  }\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<google-id-token>\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Exchange the `jwt` cookie refresh token for a new access token (and rotated refresh token in cookie and response).\n\nNotes:\n- Requires `jwt` cookie to be sent; Postman automatically stores cookies per domain.\n\nSample Response:\n{\n  \"accessToken\": \"<new-access>\",\n  \"refreshToken\": \"<new-refresh>\"\n}"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Clears the refresh cookie server-side.\n\nSample Response:\n{\n  \"message\": \"Logged out\"\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile & Account",
+      "description": "User profile editing and destructive account operations.",
+      "item": [
+        {
+          "name": "Edit Profile",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/profile/edit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "edit"
+              ]
+            },
+            "description": "Update mutable profile fields. `role` can be a string or array and maps to `roles` in Mongo.\n\nSample Request:\n{\n  \"name\": \"Ayesha\",\n  \"photo\": \"https://cdn.example.com/avatar.jpg\",\n  \"phone\": \"+96511112222\",\n  \"bio\": \"Product designer\"\n}\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"64fd...\",\n    \"username\": \"Ayesha\",\n    \"phoneNumber\": \"+96511112222\",\n    \"profileImage\": \"https://cdn.example.com/avatar.jpg\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ayesha\",\n  \"photo\": \"https://cdn.example.com/avatar.jpg\",\n  \"phone\": \"+96511112222\",\n  \"bio\": \"Product designer\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Close Account Permanently",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/account/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account",
+                "close"
+              ]
+            },
+            "description": "Deletes the account plus listings, requests, offers, posts, chats, notifications, wallet, transactions, promotion purchases, and remote files.\n\nNotes:\n- Operation cannot be undone. Ensure user explicitly confirms before calling.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "description": "Marketplace listings CRUD (+ search).",
+      "item": [
+        {
+          "name": "Create Listing",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ]
+            },
+            "description": "Creates a localized listing. `title`/`description` accept plain strings or `{en, ar}` objects. Attachments should be uploaded first via `/uploads/attach` and passed as metadata in `files`/`images`.\n\nSample Request:\n{\n  \"category\": \"Electronics\",\n  \"subCategory\": \"Phones\",\n  \"title\": {\n    \"en\": \"iPhone 14 Pro 256GB\",\n    \"ar\": \"ايفون ١٤ برو ٢٥٦ جي بي\"\n  },\n  \"description\": \"Factory unlocked, midnight purple.\",\n  \"price\": 320,\n  \"quantity\": 1,\n  \"condition\": \"new\",\n  \"files\": [],\n  \"images\": [\n    \"https://cdn.example.com/iphone.jpg\"\n  ]\n}\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501...\",\n    \"category\": \"Electronics\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"ايفون ١٤ برو ٢٥٦ جي بي\"\n    },\n    \"status\": \"open\",\n    \"price\": 320,\n    \"files\": [],\n    \"images\": [\n      \"https://cdn.example.com/iphone.jpg\"\n    ],\n    \"timeAgo\": \"a few seconds ago\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Electronics\",\n  \"subCategory\": \"Phones\",\n  \"title\": {\n    \"en\": \"iPhone 14 Pro 256GB\",\n    \"ar\": \"ايفون ١٤ برو ٢٥٦ جي بي\"\n  },\n  \"description\": \"Factory unlocked, midnight purple.\",\n  \"price\": 320,\n  \"quantity\": 1,\n  \"condition\": \"new\",\n  \"files\": [],\n  \"images\": [\n    \"https://cdn.example.com/iphone.jpg\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Listings (Search & Filter)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "iphone"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "100"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "500"
+                }
+              ]
+            },
+            "description": "Supports filtering by `category`, `subCategory`, `status`, `condition`, `minPrice`, `maxPrice`, and fuzzy `search` on English title/description.\n\nSample Response:\n{\n  \"listings\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\",\n        \"ar\": \"\"\n      },\n      \"price\": 320,\n      \"status\": \"open\",\n      \"seller\": {\n        \"id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"rating\": 4.9\n      },\n      \"offersCount\": 2,\n      \"timeAgo\": \"5m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
+          }
+        },
+        {
+          "name": "Get Listing Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/listings/6501abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "6501abcdef1234567890abcd"
+              ]
+            },
+            "description": "Returns localized title/description plus seller snapshot and offer count.\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Factory unlocked, midnight purple.\",\n      \"ar\": \"\"\n    },\n    \"price\": 320,\n    \"status\": \"open\",\n    \"seller\": {\n      \"id\": \"64fd...\",\n      \"username\": \"Ayesha\",\n      \"rating\": 4.9,\n      \"ratingCount\": 120\n    },\n    \"offersCount\": 2,\n    \"timeAgo\": \"5m\"\n  }\n}"
+          }
+        },
+        {
+          "name": "Update Listing",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/listings/6501abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "6501abcdef1234567890abcd"
+              ]
+            },
+            "description": "Owner-only update. `removedFiles` can be an array or JSON string referencing file URLs/filenames to delete; pass new attachments through `/uploads/attach` and include metadata in `files`.\n\nSample Request:\n{\n  \"title\": \"iPhone 14 Pro (Midnight Purple)\",\n  \"price\": 310,\n  \"removedFiles\": [\n    \"https://cdn.example.com/spec.pdf\"\n  ]\n}\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro (Midnight Purple)\",\n      \"ar\": \"\"\n    },\n    \"price\": 310,\n    \"status\": \"open\",\n    \"timeAgo\": \"just now\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"iPhone 14 Pro (Midnight Purple)\",\n  \"price\": 310,\n  \"removedFiles\": [\n    \"https://cdn.example.com/spec.pdf\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Delete Listing",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/listings/6501abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "listings",
+                "6501abcdef1234567890abcd"
+              ]
+            },
+            "description": "Owner-only deletion. Server cleans up Cloudinary files where `publicId` exists.\n\nSample Response:\n{\n  \"success\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests (Buyer Briefs)",
+      "description": "Service requests with localized content.",
+      "item": [
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "description": "Creates a buyer brief. Works the same as listings for localization and attachments.\n\nSample Request:\n{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": []\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502...\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"موقع تسويقي بسيط\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns localized `title`/`description`, paginated by `page`/`limit`.\n\nSample Response:\n{\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\",\n        \"ar\": \"\"\n      },\n      \"pricingType\": \"fixed\",\n      \"price\": 600,\n      \"timeAgo\": \"2m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
+          }
+        },
+        {
+          "name": "Get Request",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/requests/6502abcdef1234567890cdef",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "6502abcdef1234567890cdef"
+              ]
+            },
+            "description": "Returns the request with localized fields and `timeAgo`.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Simple marketing site\",\n      \"ar\": \"\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"timeAgo\": \"2m\"\n  }\n}"
+          }
+        },
+        {
+          "name": "Update Request",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/requests/6502abcdef1234567890cdef",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "6502abcdef1234567890cdef"
+              ]
+            },
+            "description": "Owner-only update. Accepts `removedFiles` and new `files` metadata like listings.\n\nSample Request:\n{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": []\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"status\": \"awarded\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Delete Request",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/requests/6502abcdef1234567890cdef",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "6502abcdef1234567890cdef"
+              ]
+            },
+            "description": "Owner-only deletion. Removes Cloudinary files where possible.\n\nSample Response:\n{\n  \"success\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Offers",
+      "description": "Bids on listings or requests.",
+      "item": [
+        {
+          "name": "Create Offer",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers"
+              ]
+            },
+            "description": "Submit an offer against either a listing or a request (one of `listingId`, `requestId` is required). `proposalText` is localized automatically.\n\nSample Request:\n{\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"price\": 290,\n  \"quantity\": 1,\n  \"proposalText\": \"I can deliver in 2 days.\",\n  \"files\": []\n}\n\nSample Response:\n{\n  \"offer\": {\n    \"_id\": \"6503...\",\n    \"listingId\": \"6501abcdef1234567890abcd\",\n    \"price\": 290,\n    \"status\": \"pending\",\n    \"proposalText\": {\n      \"en\": \"I can deliver in 2 days.\",\n      \"ar\": \"\"\n    },\n    \"timeAgo\": \"a few seconds ago\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"price\": 290,\n  \"quantity\": 1,\n  \"proposalText\": \"I can deliver in 2 days.\",\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Update Offer",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/offers/6503abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "6503abcdef1234567890abcd"
+              ]
+            },
+            "description": "Offer owner can adjust price, localized proposal text, and attachments.\n\nSample Request:\n{\n  \"price\": 285,\n  \"proposalText\": {\n    \"en\": \"I can bundle accessories too.\"\n  },\n  \"removedFiles\": [],\n  \"files\": []\n}\n\nSample Response:\n{\n  \"offer\": {\n    \"_id\": \"6503abcdef1234567890abcd\",\n    \"price\": 285,\n    \"proposalText\": {\n      \"en\": \"I can bundle accessories too.\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 285,\n  \"proposalText\": {\n    \"en\": \"I can bundle accessories too.\"\n  },\n  \"removedFiles\": [],\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Withdraw Offer",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/offers/6503abcdef1234567890abcd/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "6503abcdef1234567890abcd",
+                "withdraw"
+              ]
+            },
+            "description": "Marks offer status as `withdrawn`.\n\nSample Response:\n{\n  \"offer\": {\n    \"_id\": \"6503abcdef1234567890abcd\",\n    \"status\": \"withdrawn\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Offer (Owner)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/offers/6503abcdef1234567890abcd/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "6503abcdef1234567890abcd",
+                "accept"
+              ]
+            },
+            "description": "Listing/request owner accepts the offer. Backend updates listing/request status to `awarded` and notifies the bidder.\n\nSample Response:\n{\n  \"offer\": {\n    \"_id\": \"6503abcdef1234567890abcd\",\n    \"status\": \"accepted\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Complete Offer",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/offers/6503abcdef1234567890abcd/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "6503abcdef1234567890abcd",
+                "complete"
+              ]
+            },
+            "description": "Marks offer as `completed`. Both parties can trigger depending on workflow.\n\nSample Response:\n{\n  \"offer\": {\n    \"_id\": \"6503abcdef1234567890abcd\",\n    \"status\": \"completed\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Offers for Listing",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers"
+              ],
+              "query": [
+                {
+                  "key": "listingId",
+                  "value": "6501abcdef1234567890abcd"
+                }
+              ]
+            },
+            "description": "Returns `new` (latest three) and `offers` arrays. Use `requestId` to target requests.\n\nSample Response:\n{\n  \"new\": [\n    {\n      \"_id\": \"6503...\",\n      \"price\": 290,\n      \"quantity\": 1,\n      \"status\": \"pending\",\n      \"timeAgo\": \"2m\"\n    }\n  ],\n  \"offers\": [\n    {\n      \"_id\": \"6504...\",\n      \"price\": 300,\n      \"quantity\": 1,\n      \"status\": \"pending\",\n      \"timeAgo\": \"10m\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts & Feed",
+      "description": "Community posts plus aggregated feed.",
+      "item": [
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ]
+            },
+            "description": "Creates a localized community post with optional attachments.\n\nSample Request:\n{\n  \"message\": \"Check out my new workspace setup!\",\n  \"files\": []\n}\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505...\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Check out my new workspace setup!\",\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Public posts. `message` is localized and `timeAgo` is included.\n\nSample Response:\n{\n  \"posts\": [\n    {\n      \"_id\": \"6505...\",\n      \"message\": {\n        \"en\": \"Check out my new workspace setup!\",\n        \"ar\": \"\"\n      },\n      \"files\": [],\n      \"timeAgo\": \"1m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
+          }
+        },
+        {
+          "name": "Get Post",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/6505abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "6505abcdef1234567890abcd"
+              ]
+            },
+            "description": "Returns a single post with localized message and `timeAgo`.\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505abcdef1234567890abcd\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"timeAgo\": \"1m\"\n  }\n}"
+          }
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/posts/6505abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "6505abcdef1234567890abcd"
+              ]
+            },
+            "description": "Owner-only update supporting localized message and attachment management.\n\nSample Request:\n{\n  \"message\": {\n    \"en\": \"Updated caption\",\n    \"ar\": \"\"\n  },\n  \"removedFiles\": [],\n  \"files\": []\n}\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505abcdef1234567890abcd\",\n    \"message\": {\n      \"en\": \"Updated caption\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": {\n    \"en\": \"Updated caption\",\n    \"ar\": \"\"\n  },\n  \"removedFiles\": [],\n  \"files\": []\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/posts/6505abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "6505abcdef1234567890abcd"
+              ]
+            },
+            "description": "Deletes the post and remote files if any.\n\nSample Response:\n{\n  \"success\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Feed",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/feed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Aggregated feed merging latest listings, requests, and posts by created date. Each item has `type`, `payload`, and `timeAgo`.\n\nSample Response:\n{\n  \"items\": [\n    {\n      \"type\": \"listing\",\n      \"id\": \"6501...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"iPhone 14 Pro 256GB\"\n        }\n      },\n      \"timeAgo\": \"2m\"\n    },\n    {\n      \"type\": \"request\",\n      \"id\": \"6502...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"Need a bilingual landing page\"\n        }\n      },\n      \"timeAgo\": \"5m\"\n    },\n    {\n      \"type\": \"post\",\n      \"id\": \"6505...\",\n      \"payload\": {\n        \"message\": {\n          \"en\": \"Check out my new workspace setup!\"\n        }\n      },\n      \"timeAgo\": \"10m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 123,\n  \"totalPages\": 7\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews & Disputes",
+      "description": "Trust & safety operations.",
+      "item": [
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            },
+            "description": "Creates a localized review and recalculates the reviewed user’s aggregate rating.\n\nSample Request:\n{\n  \"reviewedUserId\": \"6500userabc\",\n  \"rating\": 5,\n  \"text\": \"Excellent communication\"\n}\n\nSample Response:\n{\n  \"review\": {\n    \"_id\": \"6506...\",\n    \"reviewerId\": \"64fd...\",\n    \"reviewedUserId\": \"6500userabc\",\n    \"rating\": 5,\n    \"text\": {\n      \"en\": \"Excellent communication\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedUserId\": \"6500userabc\",\n  \"rating\": 5,\n  \"text\": \"Excellent communication\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Reviews for User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/6500userabc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews",
+                "user",
+                "6500userabc"
+              ]
+            },
+            "description": "Lists reviews created against a user.\n\nSample Response:\n{\n  \"reviews\": [\n    {\n      \"_id\": \"6506...\",\n      \"reviewerId\": \"64fd...\",\n      \"rating\": 5,\n      \"text\": {\n        \"en\": \"Excellent communication\",\n        \"ar\": \"\"\n      },\n      \"createdAt\": \"2023-09-12T10:00:00Z\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "name": "Create Dispute",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/disputes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disputes"
+              ]
+            },
+            "description": "Files a dispute, notifies both the accused user and admin notification channel.\n\nSample Request:\n{\n  \"accusedUser\": \"6500userxyz\",\n  \"issueType\": \"non_delivery\",\n  \"description\": \"Item never shipped\"\n}\n\nSample Response:\n{\n  \"dispute\": {\n    \"_id\": \"6507...\",\n    \"accusedUser\": \"6500userxyz\",\n    \"issueType\": \"non_delivery\",\n    \"status\": \"open\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accusedUser\": \"6500userxyz\",\n  \"issueType\": \"non_delivery\",\n  \"description\": \"Item never shipped\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Disputes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/disputes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disputes"
+              ]
+            },
+            "description": "Returns all disputes sorted by newest first (primarily for support tooling).\n\nSample Response:\n{\n  \"disputes\": [\n    {\n      \"_id\": \"6507...\",\n      \"issueType\": \"non_delivery\",\n      \"createdBy\": \"64fd...\",\n      \"status\": \"open\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Dispute",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/disputes/6507abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disputes",
+                "6507abcdef1234567890abcd"
+              ]
+            },
+            "description": "Retrieve a single dispute by id.\n\nSample Response:\n{\n  \"dispute\": {\n    \"_id\": \"6507abcdef1234567890abcd\",\n    \"issueType\": \"non_delivery\",\n    \"description\": {\n      \"en\": \"Item never shipped\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Dispute",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/disputes/6507abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disputes",
+                "6507abcdef1234567890abcd"
+              ]
+            },
+            "description": "Admins/support can update a dispute. `description` is normalized if sent.\n\nSample Request:\n{\n  \"status\": \"in_review\",\n  \"resolution\": \"Requesting more evidence\"\n}\n\nSample Response:\n{\n  \"dispute\": {\n    \"_id\": \"6507abcdef1234567890abcd\",\n    \"status\": \"in_review\",\n    \"resolution\": \"Requesting more evidence\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_review\",\n  \"resolution\": \"Requesting more evidence\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Delete Dispute",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/disputes/6507abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disputes",
+                "6507abcdef1234567890abcd"
+              ]
+            },
+            "description": "Removes the dispute record (use sparingly).\n\nSample Response:\n{\n  \"success\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved & Follow",
+      "description": "User-curated content and social graph.",
+      "item": [
+        {
+          "name": "Add Saved Item",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/saved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saved"
+              ]
+            },
+            "description": "Adds (or upserts) a saved listing/request/post for the current user.\n\nSample Request:\n{\n  \"itemType\": \"listing\",\n  \"itemId\": \"6501abcdef1234567890abcd\",\n  \"meta\": {\n    \"title\": \"iPhone 14 Pro 256GB\"\n  }\n}\n\nSample Response:\n{\n  \"saved\": {\n    \"_id\": \"6508...\",\n    \"itemType\": \"listing\",\n    \"itemId\": \"6501abcdef1234567890abcd\",\n    \"meta\": {\n      \"title\": \"iPhone 14 Pro 256GB\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemType\": \"listing\",\n  \"itemId\": \"6501abcdef1234567890abcd\",\n  \"meta\": {\n    \"title\": \"iPhone 14 Pro 256GB\"\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Saved Items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/saved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saved"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Paginated saved items sorted DESC by created date.\n\nSample Response:\n{\n  \"saved\": [\n    {\n      \"_id\": \"6508...\",\n      \"itemType\": \"listing\",\n      \"itemId\": \"6501...\",\n      \"meta\": {\n        \"title\": \"iPhone 14 Pro 256GB\"\n      }\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 5\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Saved Item",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/saved/6508abcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saved",
+                "6508abcdef1234567890abcd"
+              ]
+            },
+            "description": "Removes a saved item by its saved document id.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Follow User",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/follow/6500userxyz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "6500userxyz"
+              ]
+            },
+            "description": "Current user follows another user; increments follower/following counts.\n\nNotes:\n- Returns `{ ok: true }` even if user was already followed (idempotent).\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unfollow User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/follow/6500userxyz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "6500userxyz"
+              ]
+            },
+            "description": "Stops following a user.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Follower",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/follow/6500userxyz/follower",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "6500userxyz",
+                "follower"
+              ]
+            },
+            "description": "Remove someone who follows the current user.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Followers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/follow/6500userxyz/followers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "6500userxyz",
+                "followers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns paginated followers with populated `follower` mini profile.\n\nSample Response:\n{\n  \"followers\": [\n    {\n      \"follower\": {\n        \"_id\": \"64fd...\",\n        \"username\": \"Omar\",\n        \"profileImage\": null\n      }\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Following",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/follow/6500userxyz/following",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "6500userxyz",
+                "following"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns accounts the user is following.\n\nSample Response:\n{\n  \"following\": [\n    {\n      \"following\": {\n        \"_id\": \"6501...\",\n        \"username\": \"Hassan\",\n        \"profileImage\": null\n      }\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "Per-user notification inbox.",
+      "item": [
+        {
+          "name": "Fetch Notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns notifications sorted DESC with pagination metadata.\n\nSample Response:\n{\n  \"notifications\": [\n    {\n      \"_id\": \"6509...\",\n      \"type\": \"offer_created\",\n      \"title\": \"New offer\",\n      \"body\": \"You have a new offer on iPhone 14 Pro 256GB\",\n      \"read\": false\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 7\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read"
+              ]
+            },
+            "description": "Marks all unread notifications as read for the current user.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clear All Notifications",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/notifications/clear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "clear"
+              ]
+            },
+            "description": "Deletes every notification for the user.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "description": "Multer-backed file attachments saved to Cloudinary.",
+      "item": [
+        {
+          "name": "Attach Files",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/uploads/attach",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "uploads",
+                "attach"
+              ]
+            },
+            "description": "Uploads files for listings/requests/offers/posts. Each file is uploaded to Cloudinary and appended to the owner record. Only PDF, DOCX, PNG, JPEG (≤10MB) are allowed.\n\nSample Request:\nform-data:\nownerType=listing\nownerId=6501abcdef1234567890abcd\ndescriptions=[\"Front photo\",\"Specs PDF\"]\nfiles=@photo.jpg\nfiles=@specs.pdf\n\nSample Response:\n{\n  \"success\": true,\n  \"files\": [\n    {\n      \"filename\": \"photo.jpg\",\n      \"mimeType\": \"image/jpeg\",\n      \"urlSrc\": \"https://res.cloudinary.com/.../photo.jpg\",\n      \"publicId\": \"listing/1695748123-photo\"\n    },\n    {\n      \"filename\": \"specs.pdf\",\n      \"mimeType\": \"application/pdf\",\n      \"urlSrc\": \"https://res.cloudinary.com/.../specs.pdf\",\n      \"publicId\": \"listing/1695748123-specs\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ownerType",
+                  "value": "listing",
+                  "type": "text"
+                },
+                {
+                  "key": "ownerId",
+                  "value": "6501abcdef1234567890abcd",
+                  "type": "text"
+                },
+                {
+                  "key": "descriptions",
+                  "value": "[\"Front photo\",\"Specs PDF\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/photo.jpg"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/specs.pdf"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "description": "Conversation + message endpoints (HTTP counterpart to Socket.IO).",
+      "item": [
+        {
+          "name": "Create Conversation",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat"
+              ]
+            },
+            "description": "Creates a conversation between participants. Typically invoked when buyer/seller start negotiation.\n\nSample Request:\n{\n  \"participants\": [\n    \"6500buyer\",\n    \"6500seller\"\n  ],\n  \"title\": \"Escrow #NEO-2023-001\"\n}\n\nSample Response:\n{\n  \"conversation\": {\n    \"_id\": \"650a...\",\n    \"participants\": [\n      \"6500buyer\",\n      \"6500seller\"\n    ],\n    \"title\": \"Escrow #NEO-2023-001\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participants\": [\n    \"6500buyer\",\n    \"6500seller\"\n  ],\n  \"title\": \"Escrow #NEO-2023-001\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "List Conversations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat"
+              ]
+            },
+            "description": "Lists all conversations containing the current user sorted by `updatedAt` DESC.\n\nSample Response:\n{\n  \"conversations\": [\n    {\n      \"_id\": \"650a...\",\n      \"participants\": [\n        \"6500buyer\",\n        \"6500seller\"\n      ],\n      \"title\": \"Escrow #NEO-2023-001\",\n      \"updatedAt\": \"2023-09-26T10:00:00Z\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chat/650aabcdef1234567890abcd/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "650aabcdef1234567890abcd",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Paginated messages with optional `before`/`after` cursors. Responses include `hasMore` and `total`.\n\nSample Response:\n{\n  \"messages\": [\n    {\n      \"_id\": \"msg01\",\n      \"sender\": \"6500buyer\",\n      \"body\": \"Hi! Is the item still available?\",\n      \"attachments\": [],\n      \"createdAt\": \"2023-09-26T10:01:00Z\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 50,\n  \"total\": 3,\n  \"hasMore\": false\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Post Message",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chat/650aabcdef1234567890abcd/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "650aabcdef1234567890abcd",
+                "messages"
+              ]
+            },
+            "description": "Persists the message, emits over Socket.IO (room = conversation id), and notifies other participants.\n\nSample Request:\n{\n  \"body\": \"Payment released.\",\n  \"attachments\": [\n    {\n      \"url\": \"https://cdn.example.com/receipt.pdf\",\n      \"filename\": \"receipt.pdf\"\n    }\n  ]\n}\n\nSample Response:\n{\n  \"message\": {\n    \"_id\": \"msg04\",\n    \"conversationId\": \"650aabcdef1234567890abcd\",\n    \"sender\": \"6500buyer\",\n    \"body\": \"Payment released.\",\n    \"attachments\": [\n      {\n        \"url\": \"https://cdn.example.com/receipt.pdf\",\n        \"filename\": \"receipt.pdf\"\n      }\n    ]\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Payment released.\",\n  \"attachments\": [\n    {\n      \"url\": \"https://cdn.example.com/receipt.pdf\",\n      \"filename\": \"receipt.pdf\"\n    }\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Mark Conversation Read",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/chat/650aabcdef1234567890abcd/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "650aabcdef1234567890abcd",
+                "read"
+              ]
+            },
+            "description": "Marks every message in the conversation as read by the current user.\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Message Read",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/chat/650aabcdef1234567890abcd/messages/msg04/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "650aabcdef1234567890abcd",
+                "messages",
+                "msg04",
+                "read"
+              ]
+            },
+            "description": "Marks a specific message as read (adds user id to `readBy`).\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "description": "Stored-value ledger with Tap/MyFatoorah integrations.",
+      "item": [
+        {
+          "name": "Create Top-Up Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/wallet/topup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet",
+                "topup"
+              ]
+            },
+            "description": "Creates a payment session (Tap/MyFatoorah) and returns a checkout URL + provider session id. Uses idempotency middleware to prevent duplicate submissions.\n\nNotes:\n- Requires `MYFATOORAH_API_KEY` and `MYFATOORAH_BASE_URL` in the environment.\n\nSample Request:\n{\n  \"amount\": 100,\n  \"idempotencyKey\": \"wallet-topup-001\",\n  \"redirectUrl\": \"https://app.neosoq.com/payments/return\"\n}\n\nSample Response:\n{\n  \"checkoutUrl\": \"https://checkout.myfatoorah.com/123\",\n  \"sessionId\": \"session_abc123\",\n  \"raw\": {\n    \"id\": \"txn_simulated\",\n    \"status\": \"pending\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"idempotencyKey\": \"wallet-topup-001\",\n  \"redirectUrl\": \"https://app.neosoq.com/payments/return\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Withdraw Funds",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/wallet/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet",
+                "withdraw"
+              ]
+            },
+            "description": "Debits the user wallet (requires `kycVerified`). Funds move into the admin wallet for manual payout.\n\nNotes:\n- Fails with 403 if `kycVerified` flag is false.\n\nSample Request:\n{\n  \"amount\": 50,\n  \"idempotencyKey\": \"withdraw-001\"\n}\n\nSample Response:\n{\n  \"ok\": true,\n  \"balanceAfter\": 150\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50,\n  \"idempotencyKey\": \"withdraw-001\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Wallet Overview",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet"
+              ]
+            },
+            "description": "Returns wallet balances and latest 10 ledger entries.\n\nSample Response:\n{\n  \"wallet\": {\n    \"_id\": \"wallet1\",\n    \"available\": 200,\n    \"locked\": 50,\n    \"currency\": \"KWD\",\n    \"timeAgo\": \"1m\"\n  },\n  \"ledger\": [\n    {\n      \"_id\": \"led1\",\n      \"amount\": 100,\n      \"type\": \"credit\",\n      \"category\": \"topup\",\n      \"balanceAfter\": 200\n    },\n    {\n      \"_id\": \"led2\",\n      \"amount\": 50,\n      \"type\": \"debit\",\n      \"category\": \"withdraw\",\n      \"balanceAfter\": 150\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Payment Webhook (MyFatoorah)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/wallet/webhooks/myfatoorah",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet",
+                "webhooks",
+                "myfatoorah"
+              ]
+            },
+            "description": "Endpoint called by payment provider. Validates signature (when configured), credits wallet, and writes ledger entries.\n\nNotes:\n- Set `MYFATOORAH_SECRET_KEY` so signature verification succeeds outside of tests.\n\nSample Request:\n{\"data\":{\"object\":{\"status\":\"paid\",\"amount\":100,\"metadata\":{\"userId\":\"6500buyer\",\"idempotencyKey\":\"wallet-topup-001\"},\"id\":\"txn_123\"}}}\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"data\":{\"object\":{\"status\":\"paid\",\"amount\":100,\"metadata\":{\"userId\":\"6500buyer\",\"idempotencyKey\":\"wallet-topup-001\"},\"id\":\"txn_123\"}}}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Escrow",
+      "description": "Buyer funds locking, releases, and admin overrides.",
+      "item": [
+        {
+          "name": "Create Escrow",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/escrow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow"
+              ]
+            },
+            "description": "Debits buyer wallet (moves funds from available to locked) and creates an escrow record referencing listing/request/offer.\n\nSample Request:\n{\n  \"workerId\": \"6500worker\",\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"amount\": 320,\n  \"idempotencyKey\": \"escrow-001\"\n}\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650b...\",\n    \"buyerId\": \"6500buyer\",\n    \"workerId\": \"6500worker\",\n    \"amount\": 320,\n    \"status\": \"active\",\n    \"confirmations\": {\n      \"buyer\": false,\n      \"worker\": false\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workerId\": \"6500worker\",\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"amount\": 320,\n  \"idempotencyKey\": \"escrow-001\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Confirm Escrow (Buyer/Worker)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd",
+                "confirm"
+              ]
+            },
+            "description": "Marks `confirmations.buyer` or `confirmations.worker` true based on current user id.\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"confirmations\": {\n      \"buyer\": true,\n      \"worker\": false\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Release Escrow (Mutual)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd",
+                "release"
+              ]
+            },
+            "description": "Requires both confirmations. Moves funds from buyer locked balance to worker available balance and closes escrow.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"completed\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Escrow (Refund Buyer)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd",
+                "cancel"
+              ]
+            },
+            "description": "Refunds locked funds back to buyer available balance and marks escrow as `cancelled`.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"cancelled\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Escrow Detail",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd"
+              ]
+            },
+            "description": "Returns escrow payload plus ledger entries referencing the escrow id.\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"buyerId\": \"6500buyer\",\n    \"workerId\": \"6500worker\",\n    \"status\": \"active\",\n    \"timeAgo\": \"3m\"\n  },\n  \"ledgers\": [\n    {\n      \"_id\": \"led10\",\n      \"walletId\": \"wallet_buyer\",\n      \"type\": \"debit\",\n      \"category\": \"escrow_hold\",\n      \"amount\": 320\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ledger Audit (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/admin/ledger-audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "admin",
+                "ledger-audit"
+              ]
+            },
+            "description": "Scans all wallets and compares ledger aggregates to detect mismatches.\n\nSample Response:\n{\n  \"mismatches\": [],\n  \"count\": 0\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Force Release",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/force-release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd",
+                "force-release"
+              ]
+            },
+            "description": "Forcefully releases funds to the worker regardless of confirmations. Protected by `idempotency` middleware.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"completed\",\n    \"adminAction\": {\n      \"action\": \"force_release\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Force Refund",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/force-refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "650babcdef1234567890abcd",
+                "force-refund"
+              ]
+            },
+            "description": "Forcefully refunds locked funds back to the buyer.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"cancelled\",\n    \"adminAction\": {\n      \"action\": \"force_refund\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Promotions",
+      "description": "Sponsored listing plans and webhooks.",
+      "item": [
+        {
+          "name": "List Promotion Plans",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "promotions"
+              ]
+            },
+            "description": "Public plans ordered by price.\n\nSample Response:\n{\n  \"plans\": [\n    {\n      \"_id\": \"plan_basic\",\n      \"title\": \"Spotlight 7 days\",\n      \"description\": \"Featured for one week\",\n      \"price\": 25,\n      \"durationDays\": 7\n    }\n  ]\n}"
+          }
+        },
+        {
+          "name": "Get Promotion Plan",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/promotions/plan_basic",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "promotions",
+                "plan_basic"
+              ]
+            },
+            "description": "Returns a single plan (also used to drive purchase confirmation).\n\nSample Response:\n{\n  \"plan\": {\n    \"_id\": \"plan_basic\",\n    \"title\": \"Spotlight 7 days\",\n    \"price\": 25,\n    \"durationDays\": 7,\n    \"active\": true\n  }\n}"
+          }
+        },
+        {
+          "name": "Purchase Plan",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/promotions/purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "promotions",
+                "purchase"
+              ]
+            },
+            "description": "Purchases a plan using wallet or MyFatoorah. Wallet flow debits instantly; card flow returns a checkout URL similar to the wallet top-up response.\n\nSample Request:\n{\n  \"planId\": \"plan_basic\",\n  \"paymentMethod\": \"wallet\",\n  \"idempotencyKey\": \"promo-001\"\n}\n\nSample Response:\n{\n  \"purchase\": {\n    \"_id\": \"purchase1\",\n    \"plan\": \"plan_basic\",\n    \"status\": \"active\",\n    \"startDate\": \"2023-09-26T10:00:00Z\",\n    \"endDate\": \"2023-10-03T10:00:00Z\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"plan_basic\",\n  \"paymentMethod\": \"wallet\",\n  \"idempotencyKey\": \"promo-001\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Promotions Webhook (MyFatoorah)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/promotions/webhooks/myfatoorah",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "promotions",
+                "webhooks",
+                "myfatoorah"
+              ]
+            },
+            "description": "Payment provider callback for promotions. Marks purchase as `completed`, stores transaction details, and notifies the user.\n\nSample Request:\n{\"data\":{\"object\":{\"status\":\"paid\",\"amount\":25,\"metadata\":{\"purchaseId\":\"purchase1\",\"userId\":\"6500seller\"},\"id\":\"promo_txn_123\"}}}\n\nSample Response:\n{\n  \"ok\": true\n}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"data\":{\"object\":{\"status\":\"paid\",\"amount\":25,\"metadata\":{\"purchaseId\":\"purchase1\",\"userId\":\"6500seller\"},\"id\":\"promo_txn_123\"}}}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Content Aggregations",
+      "description": "Public endpoints for profile pages.",
+      "item": [
+        {
+          "name": "User Listings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500seller/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500seller",
+                "listings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "iphone"
+                }
+              ]
+            },
+            "description": "Returns the user profile snapshot and their listings, optionally filtered by `search`.\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"6500seller\",\n    \"username\": \"Hassan\",\n    \"rating\": 4.8\n  },\n  \"listings\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\",\n        \"ar\": \"\"\n      },\n      \"status\": \"open\",\n      \"timeAgo\": \"2h\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 4\n}"
+          }
+        },
+        {
+          "name": "User Offers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500seller/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500seller",
+                "offers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Offers submitted by the user with normalized `quantity` and localized proposal text.\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"6500seller\",\n    \"username\": \"Hassan\"\n  },\n  \"offers\": [\n    {\n      \"_id\": \"6503...\",\n      \"listingId\": \"6501...\",\n      \"price\": 290,\n      \"status\": \"pending\",\n      \"timeAgo\": \"3d\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 2\n}"
+          }
+        },
+        {
+          "name": "User Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500seller/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500seller",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "User-authored posts (localized) plus profile snapshot.\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"6500seller\",\n    \"username\": \"Hassan\"\n  },\n  \"posts\": [\n    {\n      \"_id\": \"6505...\",\n      \"message\": {\n        \"en\": \"Packing orders!\",\n        \"ar\": \"\"\n      },\n      \"timeAgo\": \"1d\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 6\n}"
+          }
+        },
+        {
+          "name": "User Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500seller/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500seller",
+                "requests"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Requests created by the user with localized fields.\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"6500seller\",\n    \"username\": \"Hassan\"\n  },\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need packaging design\",\n        \"ar\": \"\"\n      },\n      \"status\": \"open\",\n      \"timeAgo\": \"5d\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 1\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "All admin-facing endpoints grouped by capability.",
+      "item": [
+        {
+          "name": "Admin Auth & Invites",
+          "description": "Secure staff access + invite issuance.",
+          "item": [
+            {
+              "name": "Admin Sign-In",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/auth/signin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "auth",
+                    "signin"
+                  ]
+                },
+                "description": "Authenticates admin/support/moderator accounts (roles must include one of allowed roles). Returns tokens identical to user login but requires admin-level roles.\n\nSample Request:\n{\n  \"email\": \"support@neosoq.com\",\n  \"password\": \"AdminPass!23\"\n}\n\nSample Response:\n{\n  \"accessToken\": \"<admin-access>\",\n  \"refreshToken\": \"<admin-refresh>\",\n  \"user\": {\n    \"id\": \"64admin\",\n    \"username\": \"Support Lead\",\n    \"email\": \"support@neosoq.com\",\n    \"roles\": [\n      \"admin\"\n    ],\n    \"adminAccess\": [\n      \"dashboard\"\n    ]\n  }\n}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"support@neosoq.com\",\n  \"password\": \"AdminPass!23\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Create Staff Invite",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/staff/invite",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "staff",
+                    "invite"
+                  ]
+                },
+                "description": "Generates an invite token emailed to the candidate. Requires admin bearer token.\n\nSample Request:\n{\n  \"email\": \"newmod@neosoq.com\",\n  \"roles\": [\n    \"moderator\"\n  ],\n  \"adminAccess\": [\n    \"requests\",\n    \"listings\"\n  ]\n}\n\nSample Response:\n{\n  \"message\": \"Invite created and email sent (if configured)\"\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newmod@neosoq.com\",\n  \"roles\": [\n    \"moderator\"\n  ],\n  \"adminAccess\": [\n    \"requests\",\n    \"listings\"\n  ]\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Users",
+          "description": "User insights and moderation actions.",
+          "item": [
+            {
+              "name": "User Summary Cards",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users",
+                    "summary"
+                  ]
+                },
+                "description": "Counts total users, banned users, and returns recent signups plus top payers.\n\nSample Response:\n{\n  \"totalUsers\": 1024,\n  \"bannedUsers\": 7,\n  \"recentUsers\": [\n    {\n      \"username\": \"Hanan\",\n      \"email\": \"hanan@example.com\",\n      \"createdAt\": \"2023-09-25T12:00:00Z\",\n      \"active\": true\n    }\n  ],\n  \"topPayers\": [\n    {\n      \"_id\": \"6500seller\",\n      \"total\": 1200\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "List Users",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "role",
+                      "value": "seller"
+                    },
+                    {
+                      "key": "active",
+                      "value": "true"
+                    },
+                    {
+                      "key": "search",
+                      "value": "hanan"
+                    }
+                  ]
+                },
+                "description": "Supports `email`, `username`, `role`, `active`, `fields`, `sortBy`, `sortDir`, `skip`, `limit`. Returns paginated docs.\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6500seller\",\n      \"username\": \"Hanan\",\n      \"email\": \"hanan@example.com\",\n      \"active\": true\n    }\n  ],\n  \"total\": 3,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Ban / Unban User",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/6500seller/ban",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users",
+                    "6500seller",
+                    "ban"
+                  ]
+                },
+                "description": "Toggles the `active` flag (ban=true sets active=false). Also fires a best-effort email notification.\n\nSample Request:\n{\n  \"ban\": true\n}\n\nSample Response:\n{\n  \"message\": \"OK\",\n  \"user\": {\n    \"_id\": \"6500seller\",\n    \"username\": \"Hanan\",\n    \"active\": false\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ban\": true\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Listings",
+          "description": "Content review workflow for listings.",
+          "item": [
+            {
+              "name": "List Listings (Admin View)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/listings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "listings"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "open"
+                    },
+                    {
+                      "key": "category",
+                      "value": "Electronics"
+                    },
+                    {
+                      "key": "search",
+                      "value": "iphone"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "Aggregates seller info, counts offers, and supports additional filters (`sellerType`, `method`).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\"\n      },\n      \"sellerName\": \"Ayesha\",\n      \"offersCount\": 3,\n      \"sellerPhone\": \"+96511112222\"\n    }\n  ],\n  \"total\": 5,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Listing Details (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/listings/6501abcdef1234567890abcd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "listings",
+                    "6501abcdef1234567890abcd"
+                  ]
+                },
+                "description": "Returns listing plus enriched offers (bidder name, phone, profile image).\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    }\n  },\n  \"offers\": [\n    {\n      \"id\": \"6503...\",\n      \"bidderName\": \"Hassan\",\n      \"phoneNumber\": \"+96522223333\",\n      \"amount\": 290,\n      \"status\": \"pending\"\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve Listing",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/listings/6501abcdef1234567890abcd/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "listings",
+                    "6501abcdef1234567890abcd",
+                    "approve"
+                  ]
+                },
+                "description": "Marks listing review as completed, optionally storing a note, and notifies the owner by email + in-app notification.\n\nSample Request:\n{\n  \"note\": \"Looks good\"\n}\n\nSample Response:\n{\n  \"message\": \"approved\",\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"reviewCompleted\": true\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Looks good\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Reject Listing",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/listings/6501abcdef1234567890abcd/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "listings",
+                    "6501abcdef1234567890abcd",
+                    "reject"
+                  ]
+                },
+                "description": "Closes the listing and notifies the owner with the rejection reason.\n\nSample Request:\n{\n  \"reason\": \"Images contain contact info\"\n}\n\nSample Response:\n{\n  \"message\": \"rejected\",\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"status\": \"closed\",\n    \"reviewNote\": \"Images contain contact info\"\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Images contain contact info\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Listing (Admin)",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/listings/6501abcdef1234567890abcd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "listings",
+                    "6501abcdef1234567890abcd"
+                  ]
+                },
+                "description": "Removes the listing and notifies the owner.\n\nSample Response:\n{\n  \"message\": \"deleted\"\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Requests",
+          "description": "Moderation tooling for service requests.",
+          "item": [
+            {
+              "name": "List Requests (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "open"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "skip",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "Joins creator info and counts total applications (offers).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\"\n      },\n      \"creatorName\": \"Omar\",\n      \"totalApplications\": 4\n    }\n  ],\n  \"total\": 2,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Request Details (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/requests/6502abcdef1234567890cdef",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "requests",
+                    "6502abcdef1234567890cdef"
+                  ]
+                },
+                "description": "Includes applicant list with bidder profile snapshots.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    }\n  },\n  \"applicants\": [\n    {\n      \"id\": \"6503...\",\n      \"name\": \"Hassan\",\n      \"bidAmount\": 700,\n      \"applicationDate\": \"2023-09-24T10:00:00Z\",\n      \"status\": \"pending\",\n      \"coverLetter\": {\n        \"en\": \"Can deliver in 1 week\"\n      }\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve Request",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/requests/6502abcdef1234567890cdef/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "requests",
+                    "6502abcdef1234567890cdef",
+                    "approve"
+                  ]
+                },
+                "description": "Marks the request as awarded and emails/notifies the owner.\n\nSample Response:\n{\n  \"message\": \"approved\",\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"status\": \"awarded\"\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reject Request",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/requests/6502abcdef1234567890cdef/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "requests",
+                    "6502abcdef1234567890cdef",
+                    "reject"
+                  ]
+                },
+                "description": "Closes the request and notifies the owner with the provided reason.\n\nSample Request:\n{\n  \"reason\": \"Missing budget details\"\n}\n\nSample Response:\n{\n  \"message\": \"rejected\",\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"status\": \"closed\"\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Missing budget details\"\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "Delete Request (Admin)",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/requests/6502abcdef1234567890cdef",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "requests",
+                    "6502abcdef1234567890cdef"
+                  ]
+                },
+                "description": "Deletes the request and notifies the owner.\n\nSample Response:\n{\n  \"message\": \"deleted\"\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Promotions",
+          "description": "Plan management and purchase visibility.",
+          "item": [
+            {
+              "name": "Create Promotion Plan",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/promotions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "promotions"
+                  ]
+                },
+                "description": "Creates a new promotion plan for marketplace sellers.\n\nSample Request:\n{\n  \"title\": \"Homepage Hero 14d\",\n  \"description\": \"Hero banner slot for 14 days\",\n  \"price\": 80,\n  \"durationDays\": 14,\n  \"adminFeePercent\": 15,\n  \"active\": true\n}\n\nSample Response:\n{\n  \"plan\": {\n    \"_id\": \"plan_hero14\",\n    \"title\": \"Homepage Hero 14d\",\n    \"price\": 80,\n    \"adminFeePercent\": 15,\n    \"active\": true\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Homepage Hero 14d\",\n  \"description\": \"Hero banner slot for 14 days\",\n  \"price\": 80,\n  \"durationDays\": 14,\n  \"adminFeePercent\": 15,\n  \"active\": true\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "List Promotion Plans (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/promotions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "promotions"
+                  ]
+                },
+                "description": "Returns all plans regardless of `active` flag.\n\nSample Response:\n{\n  \"plans\": [\n    {\n      \"_id\": \"plan_basic\",\n      \"title\": \"Spotlight 7 days\",\n      \"price\": 25\n    },\n    {\n      \"_id\": \"plan_hero14\",\n      \"title\": \"Homepage Hero 14d\",\n      \"price\": 80\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Promotion Plan",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/promotions/plan_basic",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "promotions",
+                    "plan_basic"
+                  ]
+                },
+                "description": "Modify plan attributes (price, duration, active, adminFeePercent).\n\nSample Request:\n{\n  \"price\": 30,\n  \"active\": false\n}\n\nSample Response:\n{\n  \"plan\": {\n    \"_id\": \"plan_basic\",\n    \"price\": 30,\n    \"active\": false\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"price\": 30,\n  \"active\": false\n}"
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "List Promotion Purchases",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/promotions/purchases",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "promotions",
+                    "purchases"
+                  ]
+                },
+                "description": "Lists recent purchases with populated plan & user references.\n\nSample Response:\n{\n  \"purchases\": [\n    {\n      \"_id\": \"purchase1\",\n      \"user\": {\n        \"username\": \"Hassan\"\n      },\n      \"plan\": {\n        \"title\": \"Spotlight 7 days\"\n      },\n      \"status\": \"active\",\n      \"amount\": 25\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Promotion Purchase",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/promotions/purchases/purchase1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "promotions",
+                    "purchases",
+                    "purchase1"
+                  ]
+                },
+                "description": "Detailed view including plan + user documents.\n\nSample Response:\n{\n  \"purchase\": {\n    \"_id\": \"purchase1\",\n    \"user\": {\n      \"username\": \"Hassan\"\n    },\n    \"plan\": {\n      \"title\": \"Spotlight 7 days\"\n    },\n    \"status\": \"active\"\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Transactions & Payments",
+          "description": "Ledger, payouts, analytics for finance.",
+          "item": [
+            {
+              "name": "List Transactions",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/transactions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "completed"
+                    },
+                    {
+                      "key": "type",
+                      "value": "promotion"
+                    }
+                  ]
+                },
+                "description": "Paginated list of transactions with optional filters on `status`, `type`, `paymentMethod`, `userId`.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"txn_001\",\n      \"userId\": \"6500seller\",\n      \"type\": \"promotion\",\n      \"amount\": 25,\n      \"status\": \"completed\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 42,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Transaction Summary Cards",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/transactions/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "transactions",
+                    "summary"
+                  ]
+                },
+                "description": "Aggregates totals (total transactions, revenue from credit-type transactions, failed counts, pending amount).\n\nSample Response:\n{\n  \"totalTransactions\": 452,\n  \"totalRevenue\": 18050,\n  \"failedTransactions\": 3,\n  \"pendingAmount\": 120\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Transaction Detail",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/transactions/txn_001",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "transactions",
+                    "txn_001"
+                  ]
+                },
+                "description": "Returns transaction plus user info for receipts/support.\n\nSample Response:\n{\n  \"_id\": \"txn_001\",\n  \"userId\": \"6500seller\",\n  \"type\": \"promotion\",\n  \"amount\": 25,\n  \"status\": \"completed\",\n  \"user\": {\n    \"email\": \"seller@example.com\"\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Wallet Transactions (Payment Ops)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/payments/wallet-transactions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "payments",
+                    "wallet-transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "type",
+                      "value": "wallet_topup"
+                    }
+                  ]
+                },
+                "description": "Detailed wallet ledger (Transaction collection) with optional search on user name/phone.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"txn_wallet_1\",\n      \"user\": {\n        \"username\": \"Omar\"\n      },\n      \"amount\": 100,\n      \"type\": \"wallet_topup\",\n      \"status\": \"completed\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 20,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Withdrawal Requests",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/payments/withdrawal-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "payments",
+                    "withdrawal-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "pending"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Lists withdrawal entries awaiting manual payout.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"wd_001\",\n      \"user\": {\n        \"username\": \"Hanan\"\n      },\n      \"amount\": 75,\n      \"method\": \"bank_transfer\",\n      \"status\": \"pending\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Payment Summary Dashboard",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/payments/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "payments",
+                    "summary"
+                  ]
+                },
+                "description": "Provides totals for credits, pending credits, combined wallet balances, pending withdrawal count/amount, and active disputes.\n\nSample Response:\n{\n  \"totalWalletCredits\": 31000,\n  \"pendingCredits\": 500,\n  \"combinedWalletAvailable\": 18000,\n  \"combinedWalletLocked\": 3200,\n  \"pendingWithdrawalCount\": 4,\n  \"pendingWithdrawalTotal\": 600,\n  \"activeDisputes\": 2\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Escrow",
+          "description": "Monitoring + overrides for escrow accounts.",
+          "item": [
+            {
+              "name": "List Escrows (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/escrow",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "escrow"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "active"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Lists escrow records with payer/recipient user info for quick triage.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"650b...\",\n      \"amount\": 320,\n      \"status\": \"active\",\n      \"payer\": {\n        \"username\": \"Omar\"\n      },\n      \"recipient\": {\n        \"username\": \"Hassan\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 3,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Escrow Detail (Admin)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/escrow/650babcdef1234567890abcd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "escrow",
+                    "650babcdef1234567890abcd"
+                  ]
+                },
+                "description": "Returns escrow, payer/recipient info, and ledger history.\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"amount\": 320,\n    \"status\": \"active\",\n    \"payer\": {\n      \"username\": \"Omar\"\n    },\n    \"recipient\": {\n      \"username\": \"Hassan\"\n    }\n  },\n  \"ledgers\": [\n    {\n      \"_id\": \"led10\",\n      \"walletId\": \"wallet_buyer\",\n      \"type\": \"debit\",\n      \"category\": \"escrow_hold\",\n      \"amount\": 320\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Force Release (Admin Shortcut)",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/force-release",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "escrow",
+                    "650babcdef1234567890abcd",
+                    "force-release"
+                  ]
+                },
+                "description": "Same as the Escrow section entry, repeated here for quick access.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"completed\",\n    \"adminAction\": {\n      \"action\": \"force_release\"\n    }\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Force Refund (Admin Shortcut)",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/escrow/650babcdef1234567890abcd/force-refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "escrow",
+                    "650babcdef1234567890abcd",
+                    "force-refund"
+                  ]
+                },
+                "description": "Same as the Escrow section entry, repeated here for quick access.\n\nSample Response:\n{\n  \"ok\": true,\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"status\": \"cancelled\",\n    \"adminAction\": {\n      \"action\": \"force_refund\"\n    }\n  }\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Analytics & Dashboard",
+          "description": "High-level signals for leadership dashboards.",
+          "item": [
+            {
+              "name": "Revenue Trend",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics/revenue-trend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics",
+                    "revenue-trend"
+                  ],
+                  "query": [
+                    {
+                      "key": "range",
+                      "value": "30d"
+                    }
+                  ]
+                },
+                "description": "Groups completed transactions by day (≤90d) or month (>90d) within the requested range/preset.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"period\": \"2023-09-24\",\n      \"revenue\": 540\n    },\n    {\n      \"period\": \"2023-09-25\",\n      \"revenue\": 320\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Monthly Transactions",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics/monthly-transactions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics",
+                    "monthly-transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "6"
+                    }
+                  ]
+                },
+                "description": "Counts transactions per month for the specified trailing window.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"month\": \"2023-04\",\n      \"count\": 120\n    },\n    {\n      \"month\": \"2023-05\",\n      \"count\": 140\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Top Performers",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics/top-performers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics",
+                    "top-performers"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "5"
+                    },
+                    {
+                      "key": "range",
+                      "value": "90d"
+                    }
+                  ]
+                },
+                "description": "Ranks users by revenue contribution (transactions of types: listing_purchase, request_payment, escrow_payment, credit). Optional `search` filters by user name/position.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"userId\": \"6500seller\",\n      \"name\": \"Hassan\",\n      \"revenue\": 2400,\n      \"img\": null,\n      \"position\": \"Seller\",\n      \"rating\": 4.9\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Dashboard Cards",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics/dashboard-cards",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics",
+                    "dashboard-cards"
+                  ]
+                },
+                "description": "Monthly revenue vs previous month, new users delta, lifetime transaction count, and average daily chat messages.\n\nSample Response:\n{\n  \"monthlyRevenue\": 4200,\n  \"monthlyRevenuePct\": 12.5,\n  \"newUsersThisMonth\": 210,\n  \"newUsersPct\": 8.2,\n  \"lifetimeTransactions\": 1820,\n  \"avgDailyMessages\": 65\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Category Distribution",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics/category-distribution",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics",
+                    "category-distribution"
+                  ],
+                  "query": [
+                    {
+                      "key": "range",
+                      "value": "30d"
+                    }
+                  ]
+                },
+                "description": "Distribution of listings by category for a date range or preset (7d/30d/3mo/6mo/1y). Adds an “Other” bucket for uncategorized segments.\n\nSample Response:\n{\n  \"total\": 480,\n  \"data\": [\n    {\n      \"category\": \"Automotive\",\n      \"count\": 120,\n      \"percent\": 25\n    },\n    {\n      \"category\": \"Electronics\",\n      \"count\": 200,\n      \"percent\": 41.67\n    },\n    {\n      \"category\": \"Services\",\n      \"count\": 90,\n      \"percent\": 18.75\n    },\n    {\n      \"category\": \"Furniture\",\n      \"count\": 40,\n      \"percent\": 8.33\n    },\n    {\n      \"category\": \"Other\",\n      \"count\": 30,\n      \"percent\": 6.25\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Dashboard Summary (Legacy)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/dashboard/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "dashboard",
+                    "summary"
+                  ]
+                },
+                "description": "Legacy summary used by early admin UI: user/listing/request counts, cumulative revenue, completed transaction count, and most recent transactions.\n\nSample Response:\n{\n  \"usersCount\": 1200,\n  \"listingsCount\": 340,\n  \"requestsCount\": 115,\n  \"revenue\": 30200,\n  \"transactionsCount\": 820,\n  \"recentTransactions\": [\n    {\n      \"_id\": \"txn_001\",\n      \"userId\": \"6500seller\",\n      \"amount\": 25,\n      \"status\": \"completed\"\n    }\n  ]\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Dashboard Transactions (Legacy)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/dashboard/transactions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "dashboard",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "completed"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Legacy transaction list powering dashboard widgets (still useful for quick debugging).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"txn_legacy1\",\n      \"amount\": 25,\n      \"status\": \"completed\",\n      \"createdAt\": \"2023-09-25T10:00:00Z\"\n    }\n  ],\n  \"total\": 200,\n  \"page\": 1,\n  \"pages\": 10,\n  \"limit\": 20\n}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

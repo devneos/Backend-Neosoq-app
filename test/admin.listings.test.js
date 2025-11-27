@@ -30,7 +30,10 @@ describe('Admin listings management', () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(listRes.body.total).toBe(1);
+    expect(listRes.body.summary).toBeTruthy();
     expect(listRes.body.docs[0].sellerName).toBe('seller');
+    expect(listRes.body.docs[0]).toHaveProperty('promotion');
+    expect(listRes.body.docs[0]).toHaveProperty('budgetType', 'fixed');
 
     const detailRes = await request(app)
       .get(`/admin/listings/${listing._id}`)
@@ -38,6 +41,8 @@ describe('Admin listings management', () => {
 
     expect(detailRes.statusCode).toBe(200);
     expect(detailRes.body.listing.title.en).toBe('Phone');
+    expect(detailRes.body.listing).toHaveProperty('promotion');
+    expect(detailRes.body.listing).toHaveProperty('seller');
     expect(Array.isArray(detailRes.body.offers)).toBe(true);
 
     // approve

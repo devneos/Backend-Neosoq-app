@@ -2,33 +2,80 @@ const Listing = require('../../models/Listing');
 const Offer = require('../../models/Offer');
 const User = require('../../models/User');
 const { buildFilter } = require('../../utils/filtering');
+const { parsePagination } = require('../../utils/pagination');
+const { buildPromotionSnapshots } = require('../../utils/promotionHelpers');
+
+const REVIEW_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
+
+const normalizeReviewStatus = (listing) => {
+  if (!listing.reviewCompleted) return REVIEW_STATUS.PENDING;
+  if (listing.status === 'closed' && listing.reviewNote) return REVIEW_STATUS.REJECTED;
+  return REVIEW_STATUS.APPROVED;
+};
+
+const computeBudgetType = (price) => (typeof price === 'number' && price > 0 ? 'fixed' : 'open');
+
+const promotionTierFromTitle = (title = '') => {
+  if (/premium/i.test(title)) return 'Premium';
+  if (/enhanced/i.test(title)) return 'Enhanced';
+  if (/regular/i.test(title)) return 'Regular';
+  if (/basic/i.test(title)) return 'Basic';
+  return title || null;
+};
+
+const buildPromotionPayload = (snapshot, listing) => {
+  if (snapshot) {
+    return {
+      tier: promotionTierFromTitle(snapshot.planName),
+      planName: snapshot.planName,
+      price: snapshot.amount,
+      remainingDays: snapshot.remainingDays,
+      status: snapshot.status,
+      endsAt: snapshot.endsAt,
+    };
+  }
+  if (listing.isPromoted) {
+    return {
+      tier: 'Manual',
+      planName: 'Manual promotion',
+      price: listing.price || 0,
+      remainingDays: null,
+      status: 'active',
+      endsAt: null,
+    };
+  }
+  return {
+    tier: null,
+    planName: null,
+    price: 0,
+    remainingDays: null,
+    status: 'none',
+    endsAt: null,
+  };
+};
 
 // GET /admin/listings
 exports.listListings = async (req, res, next) => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     const allowed = ['status', 'category', 'sellerType'];
     const filter = buildFilter(req.query, allowed);
 
-    // search by title (localized en.title) or description
-    if (req.query.search) {
-      const q = req.query.search;
+    const search = (req.query.search || '').trim();
+    if (search) {
       filter.$or = [
-        { 'title.en': { $regex: q, $options: 'i' } },
-        { 'description.en': { $regex: q, $options: 'i' } },
+        { 'title.en': { $regex: search, $options: 'i' } },
+        { 'description.en': { $regex: search, $options: 'i' } },
       ];
     }
 
-    // method filter (email/phone/google)
-    if (req.query.method) {
-      if (req.query.method === 'phone') filter['sellerPhoneExists'] = true;
-      if (req.query.method === 'email') filter['sellerEmailExists'] = true;
-      if (req.query.method === 'google') filter['sellerGoogle'] = true;
-    }
+    const occupationFilter = (req.query.occupation || req.query.occupationCategory || '').trim();
+    const methodFilter = (req.query.method || '').toLowerCase();
 
-    const limit = Math.max(1, parseInt(req.query.limit, 10) || 20);
-    const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
-
-    // Build aggregation to join seller info and count offers
     const pipeline = [
       { $match: filter },
       {
@@ -40,7 +87,6 @@ exports.listListings = async (req, res, next) => {
         },
       },
       { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
-      // compute offers count
       {
         $lookup: {
           from: 'offers',
@@ -55,23 +101,93 @@ exports.listListings = async (req, res, next) => {
           sellerName: '$seller.username',
           sellerPhone: '$seller.phoneNumber',
           sellerEmail: '$seller.email',
+          sellerPosition: '$seller.position',
+          sellerProvider: '$seller.provider',
         },
       },
       { $project: { offers: 0, description: 0 } },
-      { $sort: { createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
     ];
 
-    const docs = await Listing.aggregate(pipeline).exec();
+    if (occupationFilter) {
+      pipeline.push({
+        $match: { sellerPosition: { $regex: occupationFilter, $options: 'i' } },
+      });
+    }
 
-    const totalAgg = await Listing.aggregate([{ $match: filter }, { $count: 'total' }]);
+    if (methodFilter === 'email') {
+      pipeline.push({ $match: { sellerEmail: { $exists: true, $ne: null } } });
+    } else if (methodFilter === 'phone') {
+      pipeline.push({ $match: { sellerPhone: { $exists: true, $ne: null } } });
+    } else if (methodFilter === 'google') {
+      pipeline.push({ $match: { sellerProvider: 'google' } });
+    }
+
+    pipeline.push({ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: limit });
+
+    const [rows, totalAgg, statusAgg] = await Promise.all([
+      Listing.aggregate(pipeline).exec(),
+      Listing.aggregate([{ $match: filter }, { $count: 'total' }]),
+      Listing.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+    ]);
+
     const total = (totalAgg[0] && totalAgg[0].total) || 0;
-
-    const page = Math.floor(skip / limit) + 1;
     const pages = Math.max(1, Math.ceil(total / limit));
+    const summaryCounts = statusAgg.reduce((acc, cur) => {
+      acc[cur._id] = cur.count;
+      return acc;
+    }, {});
 
-    res.json({ docs, total, page, pages, limit });
+    const userIds = rows.map(row => row.createdBy).filter(Boolean);
+    const promotionMap = await buildPromotionSnapshots(userIds);
+
+    const docs = rows.map(listing => {
+      const userId = listing.createdBy ? String(listing.createdBy) : null;
+      const promotion = buildPromotionPayload(userId ? promotionMap[userId] : null, listing);
+      const reviewStatus = normalizeReviewStatus(listing);
+      const status =
+        reviewStatus === REVIEW_STATUS.REJECTED ? 'rejected' : listing.status || 'open';
+      const budgetType = computeBudgetType(listing.price);
+
+      return {
+        _id: listing._id,
+        image: listing.images && listing.images.length ? listing.images[0] : null,
+        title: listing.title,
+        condition: listing.condition || null,
+        category: listing.category || null,
+        sellerName: listing.sellerName || null,
+        sellerOccupation: listing.sellerPosition || null,
+        price: listing.price ?? null,
+        status,
+        reviewStatus,
+        promotion,
+        totalBids: listing.offersCount || 0,
+        budgetType,
+        sellerContact: {
+          phone: listing.sellerPhone || null,
+          email: listing.sellerEmail || null,
+          method: listing.sellerProvider || (listing.sellerEmail ? 'email' : 'phone'),
+        },
+        createdAt: listing.createdAt,
+        isPromoted: listing.isPromoted || !!promotion.planName,
+      };
+    });
+
+    res.json({
+      docs,
+      total,
+      page,
+      pages,
+      limit,
+      summary: {
+        open: summaryCounts.open || 0,
+        closed: summaryCounts.closed || 0,
+        awarded: summaryCounts.awarded || 0,
+        rejected: summaryCounts.closed ? summaryCounts.closed : 0,
+        total,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -83,12 +199,22 @@ exports.getListingDetails = async (req, res, next) => {
     const listing = await Listing.findById(req.params.id).lean();
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
 
+    const owner = listing.createdBy
+      ? await User.findById(listing.createdBy)
+          .select('username email phoneNumber profileImage position roles provider rating ratingCount')
+          .lean()
+      : null;
+
+    const promotionMap = await buildPromotionSnapshots(owner ? [owner._id] : []);
+    const promotion = owner
+      ? buildPromotionPayload(promotionMap[String(owner._id)], listing)
+      : buildPromotionPayload(null, listing);
+
     const offers = await Offer.find({ listingId: listing._id })
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
 
-    // populate bidder info
     const userIds = offers.map(o => o.userId).filter(Boolean);
     const users = await User.find({ _id: { $in: userIds } }).select('username profileImage phoneNumber').lean();
     const usersMap = {};
@@ -103,9 +229,30 @@ exports.getListingDetails = async (req, res, next) => {
       date: o.createdAt,
       status: o.status,
       proposalText: o.proposalText,
+      completedTime: o.status === 'completed' ? o.updatedAt : null,
     }));
 
-    res.json({ listing, offers: offersFormatted });
+    res.json({
+      listing: {
+        ...listing,
+        seller: owner
+          ? {
+              id: owner._id,
+              name: owner.username,
+              email: owner.email,
+              phone: owner.phoneNumber,
+              occupation: owner.position,
+              method: owner.provider || (owner.email ? 'email' : 'phone'),
+              rating: owner.rating,
+              ratingCount: owner.ratingCount,
+            }
+          : null,
+        budgetType: computeBudgetType(listing.price),
+        reviewStatus: normalizeReviewStatus(listing),
+        promotion,
+      },
+      offers: offersFormatted,
+    });
   } catch (err) {
     next(err);
   }

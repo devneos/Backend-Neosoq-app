@@ -30,7 +30,9 @@ describe('Admin requests management', () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(listRes.body.total).toBe(1);
+    expect(listRes.body.summary).toBeTruthy();
     expect(listRes.body.docs[0].creatorName).toBe('requester');
+    expect(listRes.body.docs[0]).toHaveProperty('escrowFunded');
 
     const detailRes = await request(app)
       .get(`/admin/requests/${reqDoc._id}`)
@@ -38,6 +40,8 @@ describe('Admin requests management', () => {
 
     expect(detailRes.statusCode).toBe(200);
     expect(detailRes.body.request.title.en).toBe('Build site');
+    expect(detailRes.body.request).toHaveProperty('attachments');
+    expect(detailRes.body.request).toHaveProperty('requester');
     expect(Array.isArray(detailRes.body.applicants)).toBe(true);
 
     // approve

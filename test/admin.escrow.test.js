@@ -48,6 +48,7 @@ describe('Admin escrows', () => {
       .expect(200);
     expect(res.body).toHaveProperty('data');
     expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data[0]).toHaveProperty('itemName');
   });
 
   test('GET /admin/escrows - filter by status', async () => {
@@ -65,6 +66,7 @@ describe('Admin escrows', () => {
       .expect(200);
     expect(res.body).toHaveProperty('escrow');
     expect(res.body.escrow).toHaveProperty('amount');
+    expect(Array.isArray(res.body.escrow.releaseHistory)).toBe(true);
   });
 
   test('POST /admin/escrows/:id/force-release', async () => {

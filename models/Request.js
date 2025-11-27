@@ -23,6 +23,7 @@ const RequestSchema = new mongoose.Schema({
   }],
   images: [String],
   isPromoted: { type: Boolean, default: false },
+  deadline: { type: Date },
   status: { type: String, enum: ['open','closed','awarded'], default: 'open' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   awardedOffer: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
