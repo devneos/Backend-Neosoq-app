@@ -14,7 +14,10 @@ const createConversation = async (req, res) => {
 const listConversations = async (req, res) => {
   const userId = req.user && req.user.id;
   if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-  const convs = await Conversation.find({ participants: userId }).sort({ updatedAt: -1 }).lean();
+  const convs = await Conversation.find({ participants: userId })
+    .populate('participants', 'username email profileImage rating active')
+    .sort({ updatedAt: -1 })
+    .lean();
   res.json({ conversations: convs });
 };
 
@@ -30,7 +33,13 @@ const getMessages = async (req, res) => {
   if (req.query.after) q.createdAt = { $gt: new Date(req.query.after) };
 
   const total = await ChatMessage.countDocuments(q);
-  const msgs = await ChatMessage.find(q).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+  const msgs = await ChatMessage.find(q)
+    .populate('sender', 'username email profileImage rating active')
+    .populate('readBy', 'username email')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
   res.json({ messages: msgs.reverse(), page, limit, total, hasMore: skip + msgs.length < total });
 };
 
@@ -46,6 +55,9 @@ const postMessage = async (req, res) => {
     : [];
 
   const msg = await ChatMessage.create({ conversationId: id, sender: userId, body, attachments: safeAttachments });
+  // Populate sender info
+  await msg.populate('sender', 'username email profileImage rating active');
+  
   // update conversation updatedAt
   await Conversation.findByIdAndUpdate(id, { $set: { updatedAt: new Date() } });
   // Emit via socket if available (socket attached on app)
