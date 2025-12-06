@@ -1,0 +1,145 @@
+{
+  "info": {
+    "name": "Neosoq - Admin Staff Controller",
+    "_postman_id": "neosoq-admin-staff-collection",
+    "description": "Postman collection dedicated to Admin Staff endpoints. Use `authToken` (Bearer) and `baseUrl` environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Staff",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/admin/staff?page=1&limit=20&search=alice&role=admin&status=active",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","staff"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" },
+            { "key": "search", "value": "alice" },
+            { "key": "role", "value": "admin" },
+            { "key": "status", "value": "active" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          "_body": "{\n  \"data\": [\n    {\n      \"_id\": \"64f1a2bcd1234abcd0012345\",\n      \"username\": \"alice\",\n      \"email\": \"alice@example.com\",\n      \"roles\": [\"admin\"],\n      \"suspended\": false,\n      \"profileImage\": null,\n      \"createdAt\": \"2025-10-01T12:00:00.000Z\"\n    }\n  ],\n  \"meta\": { \"total\": 1, \"limit\": 20, \"page\": 1 }\n}"
+        },
+        {
+          "name": "401 Unauthorized",
+          "status": "Unauthorized",
+          "code": 401,
+          "_body": "{ \"message\": \"Unauthorized\" }"
+        }
+      ]
+    },
+    {
+      "name": "Update Staff",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"alice-updated\",\n  \"email\": \"alice+admin@example.com\",\n  \"roles\": [\"admin\", \"support\"],\n  \"position\": \"Support Lead\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/staff/{{staffId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","staff","{{staffId}}"]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "_body": "{\n  \"data\": {\n    \"_id\": \"{{staffId}}\",\n    \"username\": \"alice-updated\",\n    \"email\": \"alice+admin@example.com\",\n    \"roles\": [\"admin\",\"support\"],\n    \"position\": \"Support Lead\",\n    \"createdAt\": \"2025-10-01T12:00:00.000Z\"\n  }\n}"
+        },
+        {
+          "name": "404 Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "_body": "{ \"message\": \"Not found\" }"
+        }
+      ]
+    },
+    {
+      "name": "Suspend/Unsuspend Staff",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"suspend\": true,\n  \"reason\": \"Violation of staff policy\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/staff/{{staffId}}/suspend",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","staff","{{staffId}}","suspend"]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "_body": "{\n  \"data\": {\n    \"id\": \"{{staffId}}\",\n    \"suspended\": true\n  }\n}"
+        },
+        {
+          "name": "404 Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "_body": "{ \"message\": \"Not found\" }"
+        }
+      ]
+    },
+    {
+      "name": "Remove Staff (soft delete)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/admin/staff/{{staffId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","staff","{{staffId}}"]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "_body": "{\n  \"data\": {\n    \"id\": \"{{staffId}}\",\n    \"removed\": true\n  }\n}"
+        },
+        {
+          "name": "404 Not Found",
+          "status": "Not Found",
+          "code": 404,
+          "_body": "{ \"message\": \"Not found\" }"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3500" },
+    { "key": "authToken", "value": "" },
+    { "key": "staffId", "value": "64f1a2bcd1234abcd0012345" }
+  ]
+}

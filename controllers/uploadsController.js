@@ -109,4 +109,64 @@ const attachFiles = async (req, res) => {
   }
 };
 
-module.exports = { attachFiles };
+// POST /uploads
+// Simple file upload that returns URL only (for chat, profiles, etc)
+// multipart/form-data with single or multiple files
+const uploadFiles = async (req, res) => {
+  try {
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: 'No files provided' });
+
+    // Validate size/type
+    for (const f of files) {
+      if (!ALLOWED.includes(f.mimetype)) {
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(400).json({ error: 'Invalid file type. Allowed: PDF, DOCX, PNG, JPEG' });
+      }
+      if (f.size > MAX_BYTES) {
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(400).json({ error: 'File too large. Max 10MB per file' });
+      }
+    }
+
+    const uploadedFiles = [];
+    for (const f of files) {
+      let uploadRes = null;
+      try {
+        uploadRes = await uploadFile(f.path, { 
+          public_id: `uploads/${Date.now()}-${path.basename(f.originalname, path.extname(f.originalname))}`,
+          resource_type: 'auto'
+        });
+      } catch (err) {
+        console.error('Cloudinary upload failed for', f.originalname, err && err.message);
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(500).json({ error: 'Upload failed: ' + (err && err.message || 'Unknown error') });
+      }
+
+      const url = uploadRes && uploadRes.secure_url ? uploadRes.secure_url : uploadRes && uploadRes.url ? uploadRes.url : null;
+      if (!url) {
+        files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+        return res.status(500).json({ error: 'Failed to get upload URL' });
+      }
+
+      uploadedFiles.push({
+        url,
+        filename: f.originalname,
+        size: f.size,
+        mimeType: f.mimetype
+      });
+
+      // cleanup local temp file
+      try { fs.unlinkSync(f.path); } catch (e) {}
+    }
+
+    return res.status(201).json({ files: uploadedFiles });
+  } catch (e) {
+    console.error('uploadFiles error:', e);
+    const files = req.files || [];
+    files.forEach(file => { try { fs.unlinkSync(file.path); } catch (e) {} });
+    return res.status(500).json({ error: 'Upload failed' });
+  }
+};
+
+module.exports = { attachFiles, uploadFiles };
