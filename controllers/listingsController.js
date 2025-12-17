@@ -131,6 +131,14 @@ const getListing = async (req, res) => {
     // offers count
     const offersCount = await Offer.countDocuments({ listingId: id });
 
+    // Check if liked by current user
+    let isLikedByMe = false;
+    if (req.user?.id) {
+      const SavedItem = require('../models/SavedItem');
+      const saved = await SavedItem.findOne({ userId: req.user.id, itemId: id, itemType: 'Listing' });
+      isLikedByMe = !!saved;
+    }
+
     // Return the full localized objects for title/description so clients
     // can choose which language to display.
     const result = {
@@ -139,6 +147,7 @@ const getListing = async (req, res) => {
       description: listing.description || { en: '', ar: '' },
       seller,
       offersCount,
+      isLikedByMe,
       timeAgo: require('../helpers/timeAgo')(listing.createdAt),
     };
 
@@ -172,6 +181,7 @@ const listListings = async (req, res) => {
   const docs = await Listing.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
     // populate seller info for each and aggregate offer counts in bulk
     const User = require('../models/User');
+    const SavedItem = require('../models/SavedItem');
     const out = [];
     const ids = docs.map(d => d._id);
     let countsMap = {};
@@ -182,9 +192,16 @@ const listListings = async (req, res) => {
       ]);
       countsMap = agg.reduce((acc, cur) => { acc[String(cur._id)] = cur.count; return acc; }, {});
     }
+    // Check if liked by current user (bulk query)
+    let likedMap = {};
+    if (req.user?.id && ids.length) {
+      const savedItems = await SavedItem.find({ userId: req.user.id, itemId: { $in: ids }, itemType: 'Listing' }).lean();
+      likedMap = savedItems.reduce((acc, cur) => { acc[String(cur.itemId)] = true; return acc; }, {});
+    }
     for (const doc of docs) {
       const seller = doc.createdBy ? await User.findById(doc.createdBy).select('username profileImage roles position country region rating ratingCount sellerType').lean() : null;
       const offersCount = countsMap[String(doc._id)] || 0;
+      const isLikedByMe = likedMap[String(doc._id)] || false;
       out.push({
         ...doc,
         // Return full localized objects for client-side selection
@@ -192,6 +209,7 @@ const listListings = async (req, res) => {
         description: doc.description || { en: '', ar: '' },
         seller: seller ? { id: seller._id, username: seller.username, profileImage: seller.profileImage, roles: seller.roles, position: seller.position, country: seller.country, region: seller.region, rating: seller.rating || 5.0, ratingCount: seller.ratingCount || 0, sellerType: seller.sellerType || 'seller' } : null,
         offersCount,
+        isLikedByMe,
         timeAgo: timeAgo(doc.createdAt),
       });
     }

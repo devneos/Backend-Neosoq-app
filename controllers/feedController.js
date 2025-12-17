@@ -1,6 +1,7 @@
 const Listing = require('../models/Listing');
 const Request = require('../models/Request');
 const Post = require('../models/Post');
+const User = require('../models/User');
 const timeAgo = require('../helpers/timeAgo');
 
 // GET /feed?page=1&limit=20
@@ -30,11 +31,33 @@ const getFeed = async (req, res) => {
     const totalCount = (Number(listCount) || 0) + (Number(reqCount) || 0) + (Number(postCount) || 0);
     const totalPages = Math.ceil(totalCount / l);
 
+    // Preload user data for authors/owners
+    const userIds = [];
+    listings.forEach(li => { if (li.createdBy) userIds.push(li.createdBy); });
+    requests.forEach(r => { if (r.createdBy) userIds.push(r.createdBy); });
+    posts.forEach(p => { if (p.createdBy) userIds.push(p.createdBy); });
+    const users = userIds.length
+      ? await User.find({ _id: { $in: userIds } }).select('username profileImage').lean()
+      : [];
+    const usersById = users.reduce((acc, u) => {
+      acc[String(u._id)] = { id: u._id, username: u.username, profileImage: u.profileImage || null };
+      return acc;
+    }, {});
+
     // Normalize items with a type field and unified fields expected by frontend
     const norm = [];
-    for (const li of listings) norm.push({ type: 'listing', id: li._id, createdAt: li.createdAt, payload: li, timeAgo: timeAgo(li.createdAt) });
-    for (const r of requests) norm.push({ type: 'request', id: r._id, createdAt: r.createdAt, payload: r, timeAgo: timeAgo(r.createdAt) });
-    for (const pdoc of posts) norm.push({ type: 'post', id: pdoc._id, createdAt: pdoc.createdAt, payload: pdoc, timeAgo: timeAgo(pdoc.createdAt) });
+    for (const li of listings) {
+      const owner = li.createdBy ? usersById[String(li.createdBy)] || null : null;
+      norm.push({ type: 'listing', id: li._id, createdAt: li.createdAt, payload: li, user: owner, timeAgo: timeAgo(li.createdAt) });
+    }
+    for (const r of requests) {
+      const owner = r.createdBy ? usersById[String(r.createdBy)] || null : null;
+      norm.push({ type: 'request', id: r._id, createdAt: r.createdAt, payload: r, user: owner, timeAgo: timeAgo(r.createdAt) });
+    }
+    for (const pdoc of posts) {
+      const author = pdoc.createdBy ? usersById[String(pdoc.createdBy)] || null : null;
+      norm.push({ type: 'post', id: pdoc._id, createdAt: pdoc.createdAt, payload: pdoc, user: author, timeAgo: timeAgo(pdoc.createdAt) });
+    }
 
     // Sort by createdAt desc
     norm.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

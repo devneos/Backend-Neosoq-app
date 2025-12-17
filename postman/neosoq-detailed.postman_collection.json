@@ -257,6 +257,60 @@
       "description": "User profile editing and destructive account operations.",
       "item": [
         {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/profile/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "me"
+              ]
+            },
+            "description": "Returns current user's full profile information.\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"64fd...\",\n    \"username\": \"Ayesha\",\n    \"email\": \"ayesha@example.com\",\n    \"phoneNumber\": \"+96511112222\",\n    \"profileImage\": \"https://cdn.example.com/avatar.jpg\",\n    \"bio\": \"Product designer\",\n    \"rating\": 4.9,\n    \"ratingCount\": 120,\n    \"followerCount\": 150,\n    \"followingCount\": 75\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/profile/6500userabc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "6500userabc"
+              ]
+            },
+            "description": "Returns another user's profile with isFollowedByMe flag and followId for current user.\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"6500userabc\",\n    \"username\": \"Hassan\",\n    \"profileImage\": \"https://cdn.example.com/hassan.jpg\",\n    \"rating\": 4.8,\n    \"followerCount\": 200,\n    \"followingCount\": 100,\n    \"isFollowedByMe\": true,\n    \"followId\": \"650f...\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Edit Profile",
           "request": {
             "method": "PUT",
@@ -397,7 +451,7 @@
                 }
               ]
             },
-            "description": "Supports filtering by `category`, `subCategory`, `status`, `condition`, `minPrice`, `maxPrice`, and fuzzy `search` on English title/description.\n\nSample Response:\n{\n  \"listings\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\",\n        \"ar\": \"\"\n      },\n      \"price\": 320,\n      \"status\": \"open\",\n      \"seller\": {\n        \"id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"rating\": 4.9\n      },\n      \"offersCount\": 2,\n      \"timeAgo\": \"5m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
+            "description": "Supports filtering by `category`, `subCategory`, `status`, `condition`, `minPrice`, `maxPrice`, and fuzzy `search` on English title/description. Returns isLikedByMe for authenticated users.\n\nSample Response:\n{\n  \"listings\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\",\n        \"ar\": \"\"\n      },\n      \"price\": 320,\n      \"status\": \"open\",\n      \"rating\": 4.8,\n      \"ratingCount\": 15,\n      \"seller\": {\n        \"id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"rating\": 4.9\n      },\n      \"offersCount\": 2,\n      \"isLikedByMe\": true,\n      \"timeAgo\": \"5m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
           }
         },
         {
@@ -414,7 +468,7 @@
                 "6501abcdef1234567890abcd"
               ]
             },
-            "description": "Returns localized title/description plus seller snapshot and offer count.\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Factory unlocked, midnight purple.\",\n      \"ar\": \"\"\n    },\n    \"price\": 320,\n    \"status\": \"open\",\n    \"seller\": {\n      \"id\": \"64fd...\",\n      \"username\": \"Ayesha\",\n      \"rating\": 4.9,\n      \"ratingCount\": 120\n    },\n    \"offersCount\": 2,\n    \"timeAgo\": \"5m\"\n  }\n}"
+            "description": "Returns localized title/description plus seller snapshot, offer count, isLikedByMe flag, and rating.\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Factory unlocked, midnight purple.\",\n      \"ar\": \"\"\n    },\n    \"price\": 320,\n    \"status\": \"open\",\n    \"rating\": 4.8,\n    \"ratingCount\": 15,\n    \"seller\": {\n      \"id\": \"64fd...\",\n      \"username\": \"Ayesha\",\n      \"rating\": 4.9,\n      \"ratingCount\": 120\n    },\n    \"offersCount\": 2,\n    \"isLikedByMe\": false,\n    \"timeAgo\": \"5m\"\n  }\n}"
           }
         },
         {
@@ -500,7 +554,7 @@
                 "requests"
               ]
             },
-            "description": "Creates a buyer brief. Works the same as listings for localization and attachments.\n\nSample Request:\n{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": []\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502...\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"موقع تسويقي بسيط\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
+            "description": "Creates a buyer brief with contact/location information and optional deadline. Works the same as listings for localization and attachments.\n\nSample Request:\n{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": [],\n  \"contactName\": \"Omar Al-Rashid\",\n  \"contactPhone\": \"+96512345678\",\n  \"location\": {\n    \"area\": \"Salmiya\",\n    \"city\": \"Kuwait City\",\n    \"country\": \"Kuwait\"\n  },\n  \"deadline\": \"2024-12-31\"\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502...\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"موقع تسويقي بسيط\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"contactName\": \"Omar Al-Rashid\",\n    \"contactPhone\": \"+96512345678\",\n    \"location\": {\n      \"area\": \"Salmiya\",\n      \"city\": \"Kuwait City\",\n      \"country\": \"Kuwait\"\n    },\n    \"deadline\": \"2024-12-31T00:00:00.000Z\",\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -513,7 +567,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": []\n}"
+              "raw": "{\n  \"title\": \"Need a bilingual landing page\",\n  \"description\": {\n    \"en\": \"Simple marketing site\",\n    \"ar\": \"موقع تسويقي بسيط\"\n  },\n  \"projectType\": \"one-time\",\n  \"pricingType\": \"fixed\",\n  \"price\": 600,\n  \"files\": [],\n  \"contactName\": \"Omar Al-Rashid\",\n  \"contactPhone\": \"+96512345678\",\n  \"location\": {\n    \"area\": \"Salmiya\",\n    \"addressLine\": \"Block 5, Street 10\",\n    \"city\": \"Kuwait City\",\n    \"state\": \"Capital\",\n    \"country\": \"Kuwait\"\n  },\n  \"deadline\": \"2024-12-31\"\n}"
             },
             "header": [
               {
@@ -546,7 +600,7 @@
                 }
               ]
             },
-            "description": "Returns localized `title`/`description`, paginated by `page`/`limit`.\n\nSample Response:\n{\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\",\n        \"ar\": \"\"\n      },\n      \"pricingType\": \"fixed\",\n      \"price\": 600,\n      \"timeAgo\": \"2m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
+            "description": "Returns localized `title`/`description`, paginated by `page`/`limit`. Includes isLikedByMe for authenticated users.\n\nSample Response:\n{\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\",\n        \"ar\": \"\"\n      },\n      \"pricingType\": \"fixed\",\n      \"price\": 600,\n      \"rating\": 5,\n      \"ratingCount\": 0,\n      \"isLikedByMe\": false,\n      \"timeAgo\": \"2m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
           }
         },
         {
@@ -563,7 +617,7 @@
                 "6502abcdef1234567890cdef"
               ]
             },
-            "description": "Returns the request with localized fields and `timeAgo`.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Simple marketing site\",\n      \"ar\": \"\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"timeAgo\": \"2m\"\n  }\n}"
+            "description": "Returns the request with localized fields, contact/location info, isLikedByMe, rating, and `timeAgo`.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    },\n    \"description\": {\n      \"en\": \"Simple marketing site\",\n      \"ar\": \"\"\n    },\n    \"price\": 600,\n    \"status\": \"open\",\n    \"contactName\": \"Omar Al-Rashid\",\n    \"contactPhone\": \"+96512345678\",\n    \"location\": {\n      \"area\": \"Salmiya\",\n      \"city\": \"Kuwait City\",\n      \"country\": \"Kuwait\"\n    },\n    \"deadline\": \"2024-12-31T00:00:00.000Z\",\n    \"rating\": 5,\n    \"ratingCount\": 0,\n    \"isLikedByMe\": true,\n    \"timeAgo\": \"2m\"\n  }\n}"
           }
         },
         {
@@ -580,7 +634,7 @@
                 "6502abcdef1234567890cdef"
               ]
             },
-            "description": "Owner-only update. Accepts `removedFiles` and new `files` metadata like listings.\n\nSample Request:\n{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": []\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"status\": \"awarded\"\n  }\n}",
+            "description": "Owner-only update. Accepts `removedFiles`, new `files` metadata, and all request fields including contact/location.\n\nSample Request:\n{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": [],\n  \"contactPhone\": \"+96599999999\"\n}\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"status\": \"awarded\",\n    \"contactPhone\": \"+96599999999\"\n  }\n}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -593,7 +647,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": []\n}"
+              "raw": "{\n  \"status\": \"awarded\",\n  \"removedFiles\": [\n    \"https://cdn.example.com/rfp.pdf\"\n  ],\n  \"files\": [],\n  \"contactPhone\": \"+96599999999\"\n}"
             },
             "header": [
               {
@@ -844,7 +898,7 @@
                 "posts"
               ]
             },
-            "description": "Creates a localized community post with optional attachments.\n\nSample Request:\n{\n  \"message\": \"Check out my new workspace setup!\",\n  \"files\": []\n}\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505...\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
+            "description": "Creates a localized community post with optional attachments. Returns post with user object.\n\nSample Request:\n{\n  \"message\": \"Check out my new workspace setup!\",\n  \"files\": []\n}\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505...\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"user\": {\n      \"_id\": \"64fd...\",\n      \"username\": \"Ayesha\",\n      \"profileImage\": \"https://cdn.example.com/avatar.jpg\",\n      \"rating\": 4.9\n    },\n    \"timeAgo\": \"seconds ago\"\n  }\n}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -890,7 +944,7 @@
                 }
               ]
             },
-            "description": "Public posts. `message` is localized and `timeAgo` is included.\n\nSample Response:\n{\n  \"posts\": [\n    {\n      \"_id\": \"6505...\",\n      \"message\": {\n        \"en\": \"Check out my new workspace setup!\",\n        \"ar\": \"\"\n      },\n      \"files\": [],\n      \"timeAgo\": \"1m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
+            "description": "Public posts with user data. `message` is localized and `timeAgo` is included. Each post includes author snapshot.\n\nSample Response:\n{\n  \"posts\": [\n    {\n      \"_id\": \"6505...\",\n      \"message\": {\n        \"en\": \"Check out my new workspace setup!\",\n        \"ar\": \"\"\n      },\n      \"files\": [],\n      \"user\": {\n        \"_id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"profileImage\": \"https://cdn.example.com/avatar.jpg\",\n        \"rating\": 4.9\n      },\n      \"timeAgo\": \"1m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20\n}"
           }
         },
         {
@@ -907,7 +961,7 @@
                 "6505abcdef1234567890abcd"
               ]
             },
-            "description": "Returns a single post with localized message and `timeAgo`.\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505abcdef1234567890abcd\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"timeAgo\": \"1m\"\n  }\n}"
+            "description": "Returns a single post with localized message, user object, and `timeAgo`.\n\nSample Response:\n{\n  \"post\": {\n    \"_id\": \"6505abcdef1234567890abcd\",\n    \"message\": {\n      \"en\": \"Check out my new workspace setup!\",\n      \"ar\": \"\"\n    },\n    \"files\": [],\n    \"user\": {\n      \"_id\": \"64fd...\",\n      \"username\": \"Ayesha\",\n      \"profileImage\": \"https://cdn.example.com/avatar.jpg\",\n      \"rating\": 4.9\n    },\n    \"timeAgo\": \"1m\"\n  }\n}"
           }
         },
         {
@@ -997,7 +1051,7 @@
                 }
               ]
             },
-            "description": "Aggregated feed merging latest listings, requests, and posts by created date. Each item has `type`, `payload`, and `timeAgo`.\n\nSample Response:\n{\n  \"items\": [\n    {\n      \"type\": \"listing\",\n      \"id\": \"6501...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"iPhone 14 Pro 256GB\"\n        }\n      },\n      \"timeAgo\": \"2m\"\n    },\n    {\n      \"type\": \"request\",\n      \"id\": \"6502...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"Need a bilingual landing page\"\n        }\n      },\n      \"timeAgo\": \"5m\"\n    },\n    {\n      \"type\": \"post\",\n      \"id\": \"6505...\",\n      \"payload\": {\n        \"message\": {\n          \"en\": \"Check out my new workspace setup!\"\n        }\n      },\n      \"timeAgo\": \"10m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 123,\n  \"totalPages\": 7\n}"
+            "description": "Aggregated feed merging latest listings, requests, and posts by created date. Each item has `type`, `payload`, `user` (author snapshot), and `timeAgo`.\n\nSample Response:\n{\n  \"items\": [\n    {\n      \"type\": \"listing\",\n      \"id\": \"6501...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"iPhone 14 Pro 256GB\"\n        }\n      },\n      \"user\": {\n        \"_id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"profileImage\": \"url\",\n        \"rating\": 4.9\n      },\n      \"timeAgo\": \"2m\"\n    },\n    {\n      \"type\": \"request\",\n      \"id\": \"6502...\",\n      \"payload\": {\n        \"title\": {\n          \"en\": \"Need a bilingual landing page\"\n        }\n      },\n      \"user\": {\n        \"_id\": \"6500...\",\n        \"username\": \"Omar\",\n        \"profileImage\": null,\n        \"rating\": 5\n      },\n      \"timeAgo\": \"5m\"\n    },\n    {\n      \"type\": \"post\",\n      \"id\": \"6505...\",\n      \"payload\": {\n        \"message\": {\n          \"en\": \"Check out my new workspace setup!\"\n        }\n      },\n      \"user\": {\n        \"_id\": \"64fd...\",\n        \"username\": \"Ayesha\",\n        \"profileImage\": \"url\",\n        \"rating\": 4.9\n      },\n      \"timeAgo\": \"10m\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 123,\n  \"totalPages\": 7\n}"
           }
         }
       ]
@@ -1007,7 +1061,7 @@
       "description": "Trust & safety operations.",
       "item": [
         {
-          "name": "Create Review",
+          "name": "Create Review for User",
           "request": {
             "method": "POST",
             "url": {
@@ -1019,7 +1073,7 @@
                 "reviews"
               ]
             },
-            "description": "Creates a localized review and recalculates the reviewed user’s aggregate rating.\n\nSample Request:\n{\n  \"reviewedUserId\": \"6500userabc\",\n  \"rating\": 5,\n  \"text\": \"Excellent communication\"\n}\n\nSample Response:\n{\n  \"review\": {\n    \"_id\": \"6506...\",\n    \"reviewerId\": \"64fd...\",\n    \"reviewedUserId\": \"6500userabc\",\n    \"rating\": 5,\n    \"text\": {\n      \"en\": \"Excellent communication\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "description": "Creates a review for a user. Updates the user's aggregate rating.\n\nSample Request:\n{\n  \"reviewedUserId\": \"6500userabc\",\n  \"rating\": 5,\n  \"text\": \"Excellent communication\"\n}\n\nSample Response:\n{\n  \"review\": {\n    \"_id\": \"6506...\",\n    \"reviewerId\": \"64fd...\",\n    \"reviewedUserId\": \"6500userabc\",\n    \"rating\": 5,\n    \"text\": {\n      \"en\": \"Excellent communication\",\n      \"ar\": \"\"\n    }\n  }\n}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1033,6 +1087,78 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reviewedUserId\": \"6500userabc\",\n  \"rating\": 5,\n  \"text\": \"Excellent communication\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Create Review for Listing",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            },
+            "description": "Creates a review for a listing. Updates the listing's aggregate rating and ratingCount.\n\nSample Request:\n{\n  \"reviewedListingId\": \"6501abcdef1234567890abcd\",\n  \"rating\": 5,\n  \"text\": \"Great product, fast shipping!\"\n}\n\nSample Response:\n{\n  \"review\": {\n    \"_id\": \"6506...\",\n    \"reviewerId\": \"64fd...\",\n    \"reviewedListingId\": \"6501...\",\n    \"rating\": 5,\n    \"text\": {\n      \"en\": \"Great product, fast shipping!\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedListingId\": \"6501abcdef1234567890abcd\",\n  \"rating\": 5,\n  \"text\": \"Great product, fast shipping!\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Create Review for Request",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            },
+            "description": "Creates a review for a service request. Updates the request's aggregate rating and ratingCount.\n\nSample Request:\n{\n  \"reviewedRequestId\": \"6502abcdef1234567890abcd\",\n  \"rating\": 5,\n  \"text\": \"Delivered exactly what I needed!\"\n}\n\nSample Response:\n{\n  \"review\": {\n    \"_id\": \"6506...\",\n    \"reviewerId\": \"64fd...\",\n    \"reviewedRequestId\": \"6502...\",\n    \"rating\": 5,\n    \"text\": {\n      \"en\": \"Delivered exactly what I needed!\",\n      \"ar\": \"\"\n    }\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedRequestId\": \"6502abcdef1234567890abcd\",\n  \"rating\": 5,\n  \"text\": \"Delivered exactly what I needed!\"\n}"
             },
             "header": [
               {
@@ -1576,7 +1702,7 @@
     },
     {
       "name": "Uploads",
-      "description": "Multer-backed file attachments saved to Cloudinary.",
+      "description": "Multer-backed file attachments saved to Cloudinary (including user profile images).",
       "item": [
         {
           "name": "Attach Files",
@@ -1630,6 +1756,89 @@
                   "key": "files",
                   "type": "file",
                   "src": "/path/to/specs.pdf"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload User Profile Image",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/uploads/attach",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "uploads",
+                "attach"
+              ]
+            },
+            "description": "Upload profile image for a user. Sets ownerType to \"user\" and updates the User.profileImage field with the uploaded URL.\n\nSample Request:\nform-data:\nownerType=user\nownerId=6500userabc\nfiles=@profile.jpg\n\nSample Response:\n{\n  \"success\": true,\n  \"files\": [\n    {\n      \"filename\": \"profile.jpg\",\n      \"mimeType\": \"image/jpeg\",\n      \"urlSrc\": \"https://res.cloudinary.com/.../profile.jpg\",\n      \"publicId\": \"user/1695748123-profile\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ownerType",
+                  "value": "user",
+                  "type": "text"
+                },
+                {
+                  "key": "ownerId",
+                  "value": "6500userabc",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/profile.jpg"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Simple File Upload (URL only)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/uploads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "uploads"
+              ]
+            },
+            "description": "Simple upload that returns URLs only without attaching to any document. Useful for chat attachments or temporary uploads.\n\nSample Request:\nform-data:\nfiles=@document.pdf\n\nSample Response:\n{\n  \"files\": [\n    {\n      \"url\": \"https://res.cloudinary.com/.../document.pdf\",\n      \"filename\": \"document.pdf\",\n      \"size\": 123456,\n      \"mimeType\": \"application/pdf\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/document.pdf"
                 }
               ]
             }
@@ -2432,6 +2641,345 @@
               ]
             },
             "description": "Requests created by the user with localized fields.\n\nSample Response:\n{\n  \"user\": {\n    \"id\": \"6500seller\",\n    \"username\": \"Hassan\"\n  },\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need packaging design\",\n        \"ar\": \"\"\n      },\n      \"status\": \"open\",\n      \"timeAgo\": \"5d\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 1\n}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Content (No Pagination)",
+      "description": "User-specific content endpoints returning full arrays.",
+      "item": [
+        {
+          "name": "Get User Listings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500userabc/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500userabc",
+                "listings"
+              ]
+            },
+            "description": "Returns all listings created by the user as a full array (no pagination).\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"6500userabc\",\n    \"username\": \"Ayesha\"\n  },\n  \"listings\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\"\n      },\n      \"price\": 320,\n      \"status\": \"open\",\n      \"timeAgo\": \"2d\"\n    },\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"MacBook Pro M2\"\n      },\n      \"price\": 1200,\n      \"status\": \"open\",\n      \"timeAgo\": \"1w\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Offers (Enriched)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500userabc/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500userabc",
+                "offers"
+              ]
+            },
+            "description": "Returns all offers by user with enriched data: target (listing/request snapshot), counterparty (name/image/phone), and isAccepted flag.\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"6500userabc\",\n    \"username\": \"Ayesha\"\n  },\n  \"offers\": [\n    {\n      \"_id\": \"6503...\",\n      \"price\": 290,\n      \"status\": \"pending\",\n      \"target\": {\n        \"title\": {\n          \"en\": \"iPhone 14 Pro 256GB\"\n        },\n        \"price\": 320,\n        \"images\": [\n          \"url\"\n        ]\n      },\n      \"counterparty\": {\n        \"name\": \"Hassan\",\n        \"profileImage\": \"url\",\n        \"phoneNumber\": \"+96512345678\"\n      },\n      \"isAccepted\": false,\n      \"timeAgo\": \"1h\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500userabc/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500userabc",
+                "posts"
+              ]
+            },
+            "description": "Returns all posts created by the user as a full array.\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"6500userabc\",\n    \"username\": \"Ayesha\"\n  },\n  \"posts\": [\n    {\n      \"_id\": \"6505...\",\n      \"message\": {\n        \"en\": \"Check out my workspace!\"\n      },\n      \"timeAgo\": \"3d\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/6500userabc/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "6500userabc",
+                "requests"
+              ]
+            },
+            "description": "Returns all service requests created by the user as a full array.\n\nSample Response:\n{\n  \"user\": {\n    \"_id\": \"6500userabc\",\n    \"username\": \"Omar\"\n  },\n  \"requests\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a landing page\"\n      },\n      \"price\": 600,\n      \"status\": \"open\",\n      \"timeAgo\": \"5d\"\n    }\n  ]\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved Items (Embedded)",
+      "description": "User-curated saved items with full embedded data.",
+      "item": [
+        {
+          "name": "Get Saved Items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/saved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saved"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns saved items with embedded full Listing/Request/Post objects. Each saved item includes the complete item data.\n\nSample Response:\n{\n  \"saved\": [\n    {\n      \"_id\": \"6508...\",\n      \"itemType\": \"listing\",\n      \"itemId\": \"6501...\",\n      \"item\": {\n        \"_id\": \"6501...\",\n        \"title\": {\n          \"en\": \"iPhone 14 Pro 256GB\"\n        },\n        \"price\": 320,\n        \"images\": [\n          \"url\"\n        ],\n        \"seller\": {\n          \"username\": \"Hassan\"\n        }\n      }\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 5\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contracts",
+      "description": "Contract management between buyers and workers.",
+      "item": [
+        {
+          "name": "List Contracts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "role",
+                  "value": "buyer"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            },
+            "description": "Returns contracts where user is buyer or worker. Filter by role (buyer/worker) and status (active/completed/disputed/cancelled).\n\nSample Response:\n{\n  \"contracts\": [\n    {\n      \"_id\": \"650c...\",\n      \"buyer\": {\n        \"_id\": \"6500...\",\n        \"username\": \"Omar\",\n        \"profileImage\": \"url\"\n      },\n      \"worker\": {\n        \"_id\": \"6501...\",\n        \"username\": \"Hassan\",\n        \"profileImage\": \"url\"\n      },\n      \"amount\": 600,\n      \"status\": \"active\",\n      \"completedByBuyer\": false,\n      \"completedByWorker\": false\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"totalCount\": 3,\n  \"totalPages\": 1\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Contract",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/contracts/650cabcdef1234567890abcd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "650cabcdef1234567890abcd"
+              ]
+            },
+            "description": "Returns detailed contract information with populated buyer, worker, listing, request, offer, and escrow.\n\nSample Response:\n{\n  \"contract\": {\n    \"_id\": \"650cabcdef1234567890abcd\",\n    \"buyer\": {\n      \"_id\": \"6500...\",\n      \"username\": \"Omar\",\n      \"email\": \"omar@example.com\"\n    },\n    \"worker\": {\n      \"_id\": \"6501...\",\n      \"username\": \"Hassan\",\n      \"phoneNumber\": \"+96512345678\"\n    },\n    \"listingId\": {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"Landing Page\"\n      },\n      \"images\": [\n        \"url\"\n      ]\n    },\n    \"escrowId\": {\n      \"_id\": \"650b...\",\n      \"amount\": 600,\n      \"status\": \"held\"\n    },\n    \"amount\": 600,\n    \"status\": \"active\",\n    \"completedByBuyer\": false,\n    \"completedByWorker\": false\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Contract",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts"
+              ]
+            },
+            "description": "Creates a new contract between buyer and worker. Requires buyer, worker, and amount. Optionally link listing, request, offer, and escrow.\n\nSample Request:\n{\n  \"buyer\": \"6500buyerabc\",\n  \"worker\": \"6501workerxyz\",\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"amount\": 600,\n  \"description\": \"Contract for landing page development\"\n}\n\nSample Response:\n{\n  \"contract\": {\n    \"_id\": \"650c...\",\n    \"buyer\": {\n      \"_id\": \"6500buyerabc\",\n      \"username\": \"Omar\"\n    },\n    \"worker\": {\n      \"_id\": \"6501workerxyz\",\n      \"username\": \"Hassan\"\n    },\n    \"amount\": 600,\n    \"status\": \"active\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyer\": \"6500buyerabc\",\n  \"worker\": \"6501workerxyz\",\n  \"listingId\": \"6501abcdef1234567890abcd\",\n  \"offerId\": \"6503abcdef1234567890abcd\",\n  \"escrowId\": \"650babcdef1234567890abcd\",\n  \"amount\": 600,\n  \"description\": \"Contract for landing page development\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Mark Contract Complete",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/contracts/650cabcdef1234567890abcd/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "650cabcdef1234567890abcd",
+                "complete"
+              ]
+            },
+            "description": "Mark contract as complete by buyer or worker. When both parties mark complete, status changes to \"completed\" and escrow is automatically released.\n\nSample Response:\n{\n  \"contract\": {\n    \"_id\": \"650cabcdef1234567890abcd\",\n    \"completedByBuyer\": true,\n    \"completedByWorker\": true,\n    \"status\": \"completed\",\n    \"completedAt\": \"2023-12-17T10:00:00.000Z\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Contract",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/contracts/650cabcdef1234567890abcd/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "650cabcdef1234567890abcd",
+                "cancel"
+              ]
+            },
+            "description": "Cancel contract with optional reason. Either buyer or worker can cancel.\n\nSample Request:\n{\n  \"reason\": \"Project requirements changed\"\n}\n\nSample Response:\n{\n  \"contract\": {\n    \"_id\": \"650cabcdef1234567890abcd\",\n    \"status\": \"cancelled\",\n    \"cancelledBy\": \"6500buyerabc\",\n    \"cancelledAt\": \"2023-12-17T10:00:00.000Z\",\n    \"cancelReason\": \"Project requirements changed\"\n  }\n}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Project requirements changed\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
           }
         }
       ]

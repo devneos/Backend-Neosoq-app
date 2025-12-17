@@ -1,0 +1,696 @@
+{
+  "info": {
+    "name": "Neosoq API - New Features",
+    "description": "Complete collection with enriched responses, isLikedByMe, isFollowedByMe, contracts, reviews, and profile endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "me"]
+            },
+            "description": "Get current user's profile information"
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}",
+                  "description": "User ID"
+                }
+              ]
+            },
+            "description": "Get another user's profile with isFollowedByMe flag"
+          }
+        },
+        {
+          "name": "Edit Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"bio\": \"Updated bio\",\n  \"photo\": \"https://cloudinary.com/profile.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile/edit",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "edit"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Upload User Profile Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "ownerType",
+                  "value": "user",
+                  "type": "text"
+                },
+                {
+                  "key": "ownerId",
+                  "value": "{{userId}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploads/attach",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploads", "attach"]
+            },
+            "description": "Upload profile image for user (ownerType: 'user')"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "item": [
+        {
+          "name": "Get Listing (with isLikedByMe)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{listingId}}"
+                }
+              ]
+            },
+            "description": "Returns listing with isLikedByMe flag for authenticated user"
+          }
+        },
+        {
+          "name": "List Listings (with isLikedByMe)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/listings?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns listings array with isLikedByMe for each item"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Get Request (with isLikedByMe)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{requestId}}"
+                }
+              ]
+            },
+            "description": "Returns request with isLikedByMe flag"
+          }
+        },
+        {
+          "name": "List Requests (with isLikedByMe)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns requests with isLikedByMe for each"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Content (No Pagination)",
+      "item": [
+        {
+          "name": "Get User Listings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/:userId/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":userId", "listings"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Returns full array of user's listings (no pagination)"
+          }
+        },
+        {
+          "name": "Get User Offers (Enriched)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/:userId/offers",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":userId", "offers"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Returns offers with target (listing/request snapshot), counterparty (name/image/phone), isAccepted"
+          }
+        },
+        {
+          "name": "Get User Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/:userId/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":userId", "posts"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Returns full array of user's posts"
+          }
+        },
+        {
+          "name": "Get User Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/:userId/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":userId", "requests"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Returns full array of user's requests"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved Items (Embedded)",
+      "item": [
+        {
+          "name": "Get Saved Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/saved?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["saved"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns saved items with embedded full Listing/Request/Post objects"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Create Review for User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedUserId\": \"{{userId}}\",\n  \"rating\": 5,\n  \"text\": \"Great service!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create review for a user"
+          }
+        },
+        {
+          "name": "Create Review for Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedListingId\": \"{{listingId}}\",\n  \"rating\": 4,\n  \"text\": \"Good product quality\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create review for a listing (aggregates rating back to listing)"
+          }
+        },
+        {
+          "name": "Create Review for Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedRequestId\": \"{{requestId}}\",\n  \"rating\": 5,\n  \"text\": \"Excellent service delivery\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create review for a request/service (aggregates rating back to request)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contracts",
+      "item": [
+        {
+          "name": "List Contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contracts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "role",
+                  "value": "buyer",
+                  "disabled": true,
+                  "description": "Filter by role: buyer or worker"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true,
+                  "description": "Filter by status: active, completed, disputed, cancelled"
+                }
+              ]
+            },
+            "description": "Get contracts where user is buyer or worker"
+          }
+        },
+        {
+          "name": "Get Contract",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{contractId}}"
+                }
+              ]
+            },
+            "description": "Get detailed contract information with populated buyer, worker, listing, request, offer, escrow"
+          }
+        },
+        {
+          "name": "Create Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyer\": \"{{buyerId}}\",\n  \"worker\": \"{{workerId}}\",\n  \"listingId\": \"{{listingId}}\",\n  \"offerId\": \"{{offerId}}\",\n  \"escrowId\": \"{{escrowId}}\",\n  \"amount\": 150,\n  \"description\": \"Service contract for listing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts"]
+            },
+            "description": "Create new contract (provide buyer, worker, amount; optionally listingId, requestId, offerId, escrowId)"
+          }
+        },
+        {
+          "name": "Mark Contract Complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/:id/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", ":id", "complete"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{contractId}}"
+                }
+              ]
+            },
+            "description": "Mark contract as complete (buyer or worker). When both mark complete, status changes to 'completed' and escrow is released"
+          }
+        },
+        {
+          "name": "Cancel Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Customer requested cancellation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/:id/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{contractId}}"
+                }
+              ]
+            },
+            "description": "Cancel contract (buyer or worker can cancel)"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "listingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contractId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "workerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "offerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "escrowId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

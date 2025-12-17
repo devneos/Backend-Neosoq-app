@@ -231,7 +231,7 @@ sections.push(
       method: 'GET',
       path: '/profile/me',
       description: describe(
-        'Returns current user\'s full profile information.',
+        'Returns current user's full profile information.',
         null,
         fmt({
           user: {
@@ -254,7 +254,7 @@ sections.push(
       method: 'GET',
       path: '/profile/6500userabc',
       description: describe(
-        'Returns another user\'s profile with isFollowedByMe flag and followId for current user.',
+        'Returns another user's profile with isFollowedByMe flag and followId for current user.',
         null,
         fmt({
           user: {
@@ -828,36 +828,14 @@ sections.push(
 sections.push(
   makeSection('Reviews & Disputes', 'Trust & safety operations.', [
     {
-      name: 'Create Review for User',
+      name: 'Create Review',
       method: 'POST',
       path: '/reviews',
       body: { reviewedUserId: '6500userabc', rating: 5, text: 'Excellent communication' },
       description: describe(
-        'Creates a review for a user. Updates the user\'s aggregate rating.',
+        'Creates a localized review and recalculates the reviewed user’s aggregate rating.',
         fmt({ reviewedUserId: '6500userabc', rating: 5, text: 'Excellent communication' }),
         fmt({ review: { _id: '6506...', reviewerId: '64fd...', reviewedUserId: '6500userabc', rating: 5, text: { en: 'Excellent communication', ar: '' } } })
-      ),
-    },
-    {
-      name: 'Create Review for Listing',
-      method: 'POST',
-      path: '/reviews',
-      body: { reviewedListingId: '6501abcdef1234567890abcd', rating: 5, text: 'Great product, fast shipping!' },
-      description: describe(
-        'Creates a review for a listing. Updates the listing\'s aggregate rating and ratingCount.',
-        fmt({ reviewedListingId: '6501abcdef1234567890abcd', rating: 5, text: 'Great product, fast shipping!' }),
-        fmt({ review: { _id: '6506...', reviewerId: '64fd...', reviewedListingId: '6501...', rating: 5, text: { en: 'Great product, fast shipping!', ar: '' } } })
-      ),
-    },
-    {
-      name: 'Create Review for Request',
-      method: 'POST',
-      path: '/reviews',
-      body: { reviewedRequestId: '6502abcdef1234567890abcd', rating: 5, text: 'Delivered exactly what I needed!' },
-      description: describe(
-        'Creates a review for a service request. Updates the request\'s aggregate rating and ratingCount.',
-        fmt({ reviewedRequestId: '6502abcdef1234567890abcd', rating: 5, text: 'Delivered exactly what I needed!' }),
-        fmt({ review: { _id: '6506...', reviewerId: '64fd...', reviewedRequestId: '6502...', rating: 5, text: { en: 'Delivered exactly what I needed!', ar: '' } } })
       ),
     },
     {
@@ -1094,7 +1072,7 @@ sections.push(
 );
 
 sections.push(
-  makeSection('Uploads', 'Multer-backed file attachments saved to Cloudinary (including user profile images).', [
+  makeSection('Uploads', 'Multer-backed file attachments saved to Cloudinary.', [
     {
       name: 'Attach Files',
       method: 'POST',
@@ -1108,7 +1086,7 @@ sections.push(
         { key: 'files', type: 'file', src: '/path/to/specs.pdf' },
       ],
       description: describe(
-        'Uploads files for listings/requests/offers/posts. Each file is uploaded to Cloudinary and appended to the owner record. Only PDF, DOCX, PNG, JPEG (≤10MB) are allowed.',
+        'Uploads files for listings/requests/offers/posts/user. Each file is uploaded to Cloudinary and appended to the owner record. For user ownerType, updates profileImage field. Only PDF, DOCX, PNG, JPEG (≤10MB) are allowed.',
         'form-data:\nownerType=listing\nownerId=6501abcdef1234567890abcd\ndescriptions=["Front photo","Specs PDF"]\nfiles=@photo.jpg\nfiles=@specs.pdf',
         fmt({
           success: true,

@@ -11,7 +11,21 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
 const createRequest = async (req, res) => {
   try {
-    const { title, description, projectType, pricingType, price } = req.body;
+    const {
+      title,
+      description,
+      projectType,
+      pricingType,
+      price,
+      contactName,
+      contactPhone,
+      area,
+      addressLine,
+      city,
+      state,
+      country,
+      deadline,
+    } = req.body;
     if (!title) return res.status(400).json({ error: 'title required' });
     const t = await ensureLocalized(title);
     const d = await ensureLocalized(description);
@@ -22,7 +36,27 @@ const createRequest = async (req, res) => {
       try { fileDocs = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files; } catch (e) { fileDocs = req.body.files; }
     }
 
-    const request = await Request.create({ title: t, description: d, projectType, pricingType, price: price ? Number(price) : undefined, files: fileDocs, createdBy: req.user?.id });
+    const location = {
+      area: area || undefined,
+      addressLine: addressLine || undefined,
+      city: city || undefined,
+      state: state || undefined,
+      country: country || undefined,
+    };
+
+    const request = await Request.create({
+      title: t,
+      description: d,
+      projectType,
+      pricingType,
+      price: price ? Number(price) : undefined,
+      files: fileDocs,
+      createdBy: req.user?.id,
+      contactName: contactName || undefined,
+      contactPhone: contactPhone || undefined,
+      location,
+      deadline: deadline ? new Date(deadline) : undefined,
+    });
     const payload = request.toObject();
     payload.timeAgo = timeAgo(request.createdAt);
     return res.status(201).json({ request: payload });
@@ -37,8 +71,15 @@ const getRequest = async (req, res) => {
     const id = req.params.id;
     const request = await Request.findById(id).lean();
     if (!request) return res.status(404).json({ error: 'Not found' });
+    // Check if liked by current user
+    let isLikedByMe = false;
+    if (req.user?.id) {
+      const SavedItem = require('../models/SavedItem');
+      const saved = await SavedItem.findOne({ userId: req.user.id, itemId: id, itemType: 'Request' });
+      isLikedByMe = !!saved;
+    }
     // Return full localized title/description so the client can pick language
-    return res.json({ request: { ...request, timeAgo: timeAgo(request.createdAt) } });
+    return res.json({ request: { ...request, isLikedByMe, timeAgo: timeAgo(request.createdAt) } });
   } catch (e) {
     console.error('getRequest', e);
     return res.status(500).json({ error: 'Failed to fetch request' });
@@ -50,8 +91,16 @@ const listRequests = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const docs = await Request.find({}).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    // Check if liked by current user (bulk query)
+    const SavedItem = require('../models/SavedItem');
+    const ids = docs.map(d => d._id);
+    let likedMap = {};
+    if (req.user?.id && ids.length) {
+      const savedItems = await SavedItem.find({ userId: req.user.id, itemId: { $in: ids }, itemType: 'Request' }).lean();
+      likedMap = savedItems.reduce((acc, cur) => { acc[String(cur.itemId)] = true; return acc; }, {});
+    }
   // Return full localized objects (title/description) instead of a single language
-  const out = docs.map(d => ({ ...d, title: d.title || { en: '', ar: '' }, description: d.description || { en: '', ar: '' }, timeAgo: timeAgo(d.createdAt) }));
+  const out = docs.map(d => ({ ...d, title: d.title || { en: '', ar: '' }, description: d.description || { en: '', ar: '' }, isLikedByMe: likedMap[String(d._id)] || false, timeAgo: timeAgo(d.createdAt) }));
     return res.json({ requests: out, page: Number(page), limit: Number(limit) });
   } catch (e) {
     console.error('listRequests', e);
@@ -104,6 +153,15 @@ const updateRequest = async (req, res) => {
     // apply other updates
     Object.keys(data).forEach(k => {
       if (['removedFiles','removed','files'].includes(k)) return;
+      if (['deadline'].includes(k) && data[k]) {
+        reqDoc[k] = new Date(data[k]);
+        return;
+      }
+      if (['area','addressLine','city','state','country'].includes(k)) {
+        reqDoc.location = reqDoc.location || {};
+        reqDoc.location[k] = data[k];
+        return;
+      }
       reqDoc[k] = data[k];
     });
 

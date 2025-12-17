@@ -4,6 +4,7 @@ const Listing = require('../models/Listing');
 const Request = require('../models/Request');
 const Offer = require('../models/Offer');
 const Post = require('../models/Post');
+const User = require('../models/User');
 const { uploadFile, destroyFile } = require('../helpers/cloudinary');
 const { ensureLocalized } = require('../helpers/translate');
 
@@ -13,14 +14,14 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
 // POST /uploads/attach
 // multipart/form-data with files and fields:
-// - ownerType: 'listing' | 'request' | 'offer'
+// - ownerType: 'listing' | 'request' | 'offer' | 'post' | 'user'
 // - ownerId: the document id
 // - descriptions[] (optional): descriptions aligned with files order
 const attachFiles = async (req, res) => {
   try {
     const ownerType = req.body.ownerType;
     const ownerId = req.body.ownerId;
-  if (!ownerType || !['listing','request','offer','post'].includes(ownerType)) return res.status(400).json({ error: 'ownerType must be one of listing|request|offer|post' });
+  if (!ownerType || !['listing','request','offer','post','user'].includes(ownerType)) return res.status(400).json({ error: 'ownerType must be one of listing|request|offer|post|user' });
     if (!ownerId) return res.status(400).json({ error: 'ownerId required' });
 
     const files = req.files || [];
@@ -49,6 +50,7 @@ const attachFiles = async (req, res) => {
   if (ownerType === 'request') owner = await Request.findById(ownerId);
   if (ownerType === 'offer') owner = await Offer.findById(ownerId);
   if (ownerType === 'post') owner = await Post.findById(ownerId);
+  if (ownerType === 'user') owner = await User.findById(ownerId);
     if (!owner) return res.status(404).json({ error: `${ownerType} not found` });
 
     const addedFiles = [];
@@ -93,6 +95,11 @@ const attachFiles = async (req, res) => {
           // Posts may include images; push file metadata
           if (f.mimetype && f.mimetype.startsWith('image') && url) owner.images = owner.images || [], owner.images.push(url);
           owner.files.push(fileDoc);
+      } else if (ownerType === 'user') {
+        // For user profile image: only accept image types and update profileImage field
+        if (f.mimetype && f.mimetype.startsWith('image') && url) {
+          owner.profileImage = url;
+        }
       }
 
       // cleanup local

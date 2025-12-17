@@ -32,6 +32,8 @@ const ListingSchema = new mongoose.Schema({
   likesCount: { type: Number, default: 0 },
   sellerRating: { type: Number, default: 5.0 },
   sellerType: { type: String, default: 'seller' },
+  rating: { type: Number, default: 5.0 },
+  ratingCount: { type: Number, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   awardedOffer: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
   awardedAt: { type: Date },

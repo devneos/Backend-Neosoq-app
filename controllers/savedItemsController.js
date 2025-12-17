@@ -31,7 +31,29 @@ const fetchSaved = async (req, res) => {
   const skip = (page - 1) * limit;
   const rows = await SavedItem.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
   const total = await SavedItem.countDocuments({ userId });
-  res.json({ saved: rows, page, limit, total });
+  
+  // Embed full item data for each saved item
+  const Listing = require('../models/Listing');
+  const Request = require('../models/Request');
+  const Post = require('../models/Post');
+  
+  const enriched = await Promise.all(rows.map(async (saved) => {
+    let item = null;
+    try {
+      if (saved.itemType === 'listing') {
+        item = await Listing.findById(saved.itemId).lean();
+      } else if (saved.itemType === 'request') {
+        item = await Request.findById(saved.itemId).lean();
+      } else if (saved.itemType === 'post') {
+        item = await Post.findById(saved.itemId).lean();
+      }
+    } catch (e) {
+      // Item may have been deleted
+    }
+    return { ...saved, item };
+  }));
+  
+  res.json({ saved: enriched, page, limit, total });
 };
 
 module.exports = { addSavedItem, removeSavedItem, fetchSaved };

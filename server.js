@@ -96,6 +96,7 @@ app.use('/notifications', require('./routes/notificationsRoutes'));
 app.use('/saved', require('./routes/savedRoutes'));
 app.use('/account', require('./routes/accountRoutes'));
 app.use('/profile', require('./routes/profileRoutes'));
+app.use('/contracts', require('./routes/contractsRoutes'));
 // Admin routes (staff invites)
 app.use('/admin', require('./routes/adminRoutes'));
 // Admin authentication (signin for admins/support/moderators)

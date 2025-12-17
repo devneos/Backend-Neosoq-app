@@ -29,7 +29,7 @@ const fetchUserProfile = async (userId) => {
 const getUserListings = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const user = await fetchUserProfile(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -41,11 +41,9 @@ const getUserListings = async (req, res) => {
       ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const totalCount = await Listing.countDocuments(q);
-    const docs = await Listing.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    const docs = await Listing.find(q).sort({ createdAt: -1 }).lean();
     const out = docs.map(l => ({ ...l, title: l.title || { en: '', ar: '' }, description: l.description || { en: '', ar: '' }, timeAgo: timeAgo(l.createdAt), user }));
-    return res.json({ user, listings: out, page: Number(page), limit: Number(limit), totalCount });
+    return res.json({ user, listings: out });
   } catch (e) {
     console.error('getUserListings', e);
     return res.status(500).json({ error: 'Failed to fetch listings' });
@@ -55,7 +53,7 @@ const getUserListings = async (req, res) => {
 const getUserOffers = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const user = await fetchUserProfile(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -67,11 +65,68 @@ const getUserOffers = async (req, res) => {
       ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const totalCount = await Offer.countDocuments(q);
-    const docs = await Offer.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
-    const out = docs.map(o => ({ ...o, timeAgo: timeAgo(o.createdAt), quantity: o.quantity === 0 ? null : o.quantity, user }));
-    return res.json({ user, offers: out, page: Number(page), limit: Number(limit), totalCount });
+    const docs = await Offer.find(q)
+      .populate('listingId', 'title images price category')
+      .populate('requestId', 'title description budget category')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Enrich with target, counterparty, and isAccepted
+    const enriched = await Promise.all(docs.map(async (o) => {
+      let target = null;
+      let counterparty = null;
+      
+      // Get target (listing or request)
+      if (o.listingId) {
+        target = {
+          type: 'listing',
+          id: o.listingId._id,
+          title: o.listingId.title,
+          images: o.listingId.images,
+          price: o.listingId.price,
+          category: o.listingId.category
+        };
+        // Counterparty is listing owner
+        const listing = await Listing.findById(o.listingId._id).populate('createdBy', 'username profileImage phoneNumber').lean();
+        if (listing && listing.createdBy) {
+          counterparty = {
+            name: listing.createdBy.username,
+            image: listing.createdBy.profileImage,
+            phone: listing.createdBy.phoneNumber
+          };
+        }
+      } else if (o.requestId) {
+        target = {
+          type: 'request',
+          id: o.requestId._id,
+          title: o.requestId.title,
+          description: o.requestId.description,
+          budget: o.requestId.budget,
+          category: o.requestId.category
+        };
+        // Counterparty is request owner
+        const request = await Request.findById(o.requestId._id).populate('createdBy', 'username profileImage phoneNumber').lean();
+        if (request && request.createdBy) {
+          counterparty = {
+            name: request.createdBy.username,
+            image: request.createdBy.profileImage,
+            phone: request.createdBy.phoneNumber
+          };
+        }
+      }
+
+      return {
+        ...o,
+        target,
+        counterparty,
+        isAccepted: o.status === 'accepted',
+        timeAgo: timeAgo(o.createdAt),
+        quantity: o.quantity === 0 ? null : o.quantity,
+        user
+      };
+    }));
+
+    return res.json({ user, offers: enriched });
   } catch (e) {
     console.error('getUserOffers', e);
     return res.status(500).json({ error: 'Failed to fetch offers' });
@@ -81,18 +136,16 @@ const getUserOffers = async (req, res) => {
 const getUserPosts = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const user = await fetchUserProfile(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const q = { createdBy: userId };
     if (search) q['message.en'] = { $regex: search, $options: 'i' };
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const totalCount = await Post.countDocuments(q);
-    const docs = await Post.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    const docs = await Post.find(q).sort({ createdAt: -1 }).lean();
     const out = docs.map(p => ({ ...p, message: p.message || { en: '', ar: '' }, timeAgo: timeAgo(p.createdAt), user }));
-    return res.json({ user, posts: out, page: Number(page), limit: Number(limit), totalCount });
+    return res.json({ user, posts: out });
   } catch (e) {
     console.error('getUserPosts', e);
     return res.status(500).json({ error: 'Failed to fetch posts' });
@@ -102,18 +155,16 @@ const getUserPosts = async (req, res) => {
 const getUserRequests = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const user = await fetchUserProfile(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const q = { createdBy: userId };
     if (search) q['title.en'] = { $regex: search, $options: 'i' };
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const totalCount = await Request.countDocuments(q);
-    const docs = await Request.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    const docs = await Request.find(q).sort({ createdAt: -1 }).lean();
     const out = docs.map(r => ({ ...r, title: r.title || { en: '', ar: '' }, description: r.description || { en: '', ar: '' }, timeAgo: timeAgo(r.createdAt), user }));
-    return res.json({ user, requests: out, page: Number(page), limit: Number(limit), totalCount });
+    return res.json({ user, requests: out });
   } catch (e) {
     console.error('getUserRequests', e);
     return res.status(500).json({ error: 'Failed to fetch requests' });

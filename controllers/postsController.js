@@ -1,6 +1,25 @@
 const Post = require('../models/Post');
+const User = require('../models/User');
 const { ensureLocalized } = require('../helpers/translate');
 const timeAgo = require('../helpers/timeAgo');
+
+const buildUserSummary = async (userId) => {
+  if (!userId) return null;
+  const u = await User.findById(userId).select('username profileImage roles position country region rating ratingCount sellerType').lean();
+  if (!u) return null;
+  return {
+    id: u._id,
+    username: u.username,
+    profileImage: u.profileImage || null,
+    roles: u.roles || [],
+    position: u.position || null,
+    country: u.country || null,
+    region: u.region || null,
+    rating: u.rating || 5.0,
+    ratingCount: u.ratingCount || 0,
+    sellerType: u.sellerType || 'seller',
+  };
+};
 
 const createPost = async (req, res) => {
   try {
@@ -17,6 +36,7 @@ const createPost = async (req, res) => {
     const post = await Post.create({ message: m, files, createdBy: req.user?.id });
     const payload = post.toObject();
     payload.timeAgo = timeAgo(post.createdAt);
+    payload.user = await buildUserSummary(post.createdBy);
     return res.status(201).json({ post: payload });
   } catch (e) {
     console.error('createPost', e);
@@ -29,7 +49,8 @@ const getPost = async (req, res) => {
     const id = req.params.id;
     const post = await Post.findById(id).lean();
     if (!post) return res.status(404).json({ error: 'Not found' });
-    return res.json({ post: { ...post, timeAgo: timeAgo(post.createdAt) } });
+    const user = await buildUserSummary(post.createdBy);
+    return res.json({ post: { ...post, timeAgo: timeAgo(post.createdAt), user } });
   } catch (e) {
     console.error('getPost', e);
     return res.status(500).json({ error: 'Failed to fetch post' });
@@ -41,7 +62,29 @@ const listPosts = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const docs = await Post.find({}).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
-    const out = docs.map(d => ({ ...d, message: d.message || { en: '', ar: '' }, timeAgo: timeAgo(d.createdAt) }));
+    const userIds = docs.map(d => d.createdBy).filter(Boolean);
+    const users = userIds.length ? await User.find({ _id: { $in: userIds } }).select('username profileImage roles position country region rating ratingCount sellerType').lean() : [];
+    const usersById = users.reduce((acc, u) => {
+      acc[String(u._id)] = {
+        id: u._id,
+        username: u.username,
+        profileImage: u.profileImage || null,
+        roles: u.roles || [],
+        position: u.position || null,
+        country: u.country || null,
+        region: u.region || null,
+        rating: u.rating || 5.0,
+        ratingCount: u.ratingCount || 0,
+        sellerType: u.sellerType || 'seller',
+      };
+      return acc;
+    }, {});
+    const out = docs.map(d => ({
+      ...d,
+      message: d.message || { en: '', ar: '' },
+      timeAgo: timeAgo(d.createdAt),
+      user: d.createdBy ? usersById[String(d.createdBy)] || null : null,
+    }));
     return res.json({ posts: out, page: Number(page), limit: Number(limit) });
   } catch (e) {
     console.error('listPosts', e);

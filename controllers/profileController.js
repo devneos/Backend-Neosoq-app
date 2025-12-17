@@ -1,5 +1,42 @@
 const User = require('../models/User');
+const Follow = require('../models/Follow');
 const { ensureLocalized } = require('../helpers/translate');
+
+const getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).select('-password').lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    return res.json({ user });
+  } catch (e) {
+    console.error('getMyProfile', e);
+    return res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    const targetUserId = req.params.id;
+    const currentUserId = req.user?.id;
+    const user = await User.findById(targetUserId).select('-password').lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    // Check if current user follows this user
+    let isFollowedByMe = false;
+    let followId = null;
+    if (currentUserId) {
+      const follow = await Follow.findOne({ followerId: currentUserId, followedUserId: targetUserId }).lean();
+      if (follow) {
+        isFollowedByMe = true;
+        followId = follow._id;
+      }
+    }
+    return res.json({ user: { ...user, isFollowedByMe, followId } });
+  } catch (e) {
+    console.error('getUserProfile', e);
+    return res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+};
 
 const editProfile = async (req, res) => {
   const userId = req.user && req.user.id;
@@ -18,4 +55,4 @@ const editProfile = async (req, res) => {
   res.json({ user: updated });
 };
 
-module.exports = { editProfile };
+module.exports = { getMyProfile, getUserProfile, editProfile };

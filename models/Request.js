@@ -24,6 +24,18 @@ const RequestSchema = new mongoose.Schema({
   images: [String],
   isPromoted: { type: Boolean, default: false },
   deadline: { type: Date },
+  rating: { type: Number, default: 5.0 },
+  ratingCount: { type: Number, default: 0 },
+  // contact / address details for the request owner
+  contactName: { type: String },
+  contactPhone: { type: String },
+  location: {
+    area: String,
+    addressLine: String,
+    city: String,
+    state: String,
+    country: String,
+  },
   status: { type: String, enum: ['open','closed','awarded'], default: 'open' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   awardedOffer: { type: mongoose.Schema.Types.ObjectId, ref: 'Offer', default: null },
