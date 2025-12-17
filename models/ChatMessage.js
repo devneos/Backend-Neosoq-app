@@ -7,6 +7,13 @@ const ChatMessageSchema = new mongoose.Schema(
     to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     body: { type: String },
     attachments: [{ url: String, filename: String }],
+    // Moderation fields
+    flagged: { type: Boolean, default: false },
+    moderationStatus: {
+      type: String,
+      enum: ['clean', 'flagged', 'review', 'resolved'],
+      default: 'clean',
+    },
     readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     metadata: { type: mongoose.Schema.Types.Mixed },
     status: { type: String, enum: ['sent', 'delivered', 'failed'], default: 'sent' },

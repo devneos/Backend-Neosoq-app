@@ -1,0 +1,149 @@
+{
+  "info": {
+    "name": "Neosoq - Admin Messages & Reports",
+    "_postman_id": "neosoq-admin-messages-reports",
+    "description": "Admin moderation APIs for messages, reports, and settings. Use authToken/baseUrl environment vars.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Summary Cards",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/admin/messages/summary?range=30d",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","messages","summary"],
+          "query": [{ "key": "range", "value": "30d" }]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "code": 200,
+          "_body": "{\n  \"cards\": {\n    \"totalMessages\": { \"value\": 1200, \"changePct\": 12.5 },\n    \"flaggedMessages\": { \"value\": 23, \"changePct\": -5.2 },\n    \"activeReports\": { \"value\": 14, \"changePct\": 3.1 },\n    \"urgentReports\": { \"value\": 4, \"changePct\": 1.2 }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "List Messages",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/admin/messages?page=1&limit=20&status=flagged&search=spam",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","messages"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" },
+            { "key": "status", "value": "flagged" },
+            { "key": "search", "value": "spam" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "code": 200,
+          "_body": "{\n  \"docs\": [\n    {\n      \"_id\": \"...\",\n      \"senderName\": \"alice\",\n      \"receiverName\": \"bob\",\n      \"contentPreview\": \"This is a preview...\",\n      \"createdAt\": \"2025-12-17T10:00:00Z\",\n      \"status\": \"flagged\",\n      \"flagged\": true\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 42\n}"
+        }
+      ]
+    },
+    {
+      "name": "Flag Message",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}/flag", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}","flag"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"message\": { \"_id\": \"...\", \"flagged\": true, \"moderationStatus\": \"flagged\" } }" } ]
+    },
+    {
+      "name": "Unflag Message",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}/unflag", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}","unflag"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"message\": { \"_id\": \"...\", \"flagged\": false, \"moderationStatus\": \"resolved\" } }" } ]
+    },
+    {
+      "name": "Delete Message",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+    },
+    {
+      "name": "List Reports",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/admin/messages/reports?page=1&limit=20&status=open&priority=urgent&search=fraud",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin","messages","reports"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" },
+            { "key": "status", "value": "open" },
+            { "key": "priority", "value": "urgent" },
+            { "key": "search", "value": "fraud" }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "code": 200,
+          "_body": "{\n  \"docs\": [\n    {\n      \"_id\": \"...\",\n      \"reporter\": \"alice\",\n      \"accused\": \"bob\",\n      \"issueType\": \"fraud\",\n      \"description\": \"Reported content...\",\n      \"priority\": \"urgent\",\n      \"status\": \"open\",\n      \"flagged\": true,\n      \"createdAt\": \"2025-12-17T09:00:00Z\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 3\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update Report Status/Priority",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"resolved\",\n  \"priority\": \"normal\",\n  \"flagged\": false\n}" },
+        "url": { "raw": "{{baseUrl}}/admin/messages/reports/{{reportId}}/status", "host": ["{{baseUrl}}"], "path": ["admin","messages","reports","{{reportId}}","status"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"report\": { \"_id\": \"...\", \"status\": \"resolved\", \"priority\": \"normal\" } }" } ]
+    },
+    {
+      "name": "Get Settings",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": { "raw": "{{baseUrl}}/admin/messages/settings", "host": ["{{baseUrl}}"], "path": ["admin","messages","settings"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"settings\": { \"autoFlagKeywords\": [\"spam\",\"fraud\"], \"autoResolveDays\": 30 } }" } ]
+    },
+    {
+      "name": "Update Settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"autoFlagKeywords\": [\"spam\", \"scam\"],\n  \"autoResolveDays\": 14,\n  \"notifyAdmins\": true\n}" },
+        "url": { "raw": "{{baseUrl}}/admin/messages/settings", "host": ["{{baseUrl}}"], "path": ["admin","messages","settings"] }
+      },
+      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"settings\": { \"autoFlagKeywords\": [\"spam\",\"scam\"], \"autoResolveDays\": 14, \"notifyAdmins\": true } }" } ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3500" },
+    { "key": "authToken", "value": "" },
+    { "key": "messageId", "value": "" },
+    { "key": "reportId", "value": "" }
+  ]
+}

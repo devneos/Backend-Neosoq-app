@@ -34,6 +34,9 @@ router.use('/payments', require('./admin/paymentRoutes'));
 // Promotions management
 router.use('/promotions', require('./admin/promotionRoutes'));
 
+// Messages & Reports management
+router.use('/messages', require('./admin/messagesRoutes'));
+
 // Staff management (list/update/suspend/remove)
 router.use('/staff', require('./admin/staffRoutes'));
 

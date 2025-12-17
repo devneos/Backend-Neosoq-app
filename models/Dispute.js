@@ -11,6 +11,8 @@ const DisputeSchema = new mongoose.Schema({
   issueType: { type: String, required: true },
   description: { type: LocalizedString },
   status: { type: String, enum: ['open','resolved','rejected'], default: 'open' },
+  priority: { type: String, enum: ['normal','urgent'], default: 'normal' },
+  flagged: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Dispute', DisputeSchema);

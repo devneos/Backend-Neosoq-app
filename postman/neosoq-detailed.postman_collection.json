@@ -2531,7 +2531,7 @@
                     "summary"
                   ]
                 },
-                "description": "Counts total users, banned users, and returns recent signups plus top payers.\n\nSample Response:\n{\n  \"totalUsers\": 1024,\n  \"bannedUsers\": 7,\n  \"recentUsers\": [\n    {\n      \"username\": \"Hanan\",\n      \"email\": \"hanan@example.com\",\n      \"createdAt\": \"2023-09-25T12:00:00Z\",\n      \"active\": true\n    }\n  ],\n  \"topPayers\": [\n    {\n      \"_id\": \"6500seller\",\n      \"total\": 1200\n    }\n  ]\n}",
+                "description": "Counts total/active/suspended users and monthly deltas, plus recent users and top payers.\n\nSample Response:\n{\n  \"summary\": {\n    \"totalUsers\": {\n      \"value\": 1024,\n      \"monthlyChangePct\": 12.5\n    },\n    \"activeUsers\": {\n      \"value\": 980\n    },\n    \"suspendedUsers\": {\n      \"value\": 44\n    },\n    \"avgMonthlyRating\": {\n      \"value\": 4.85,\n      \"monthlyChangePct\": 3.1\n    }\n  },\n  \"recentUsers\": [\n    {\n      \"id\": \"6500seller\",\n      \"fullName\": \"Hanan\",\n      \"profileImage\": null,\n      \"phoneNumber\": \"+96550001111\",\n      \"status\": \"active\",\n      \"createdAt\": \"2025-01-05T12:00:00.000Z\",\n      \"email\": \"hanan@example.com\",\n      \"roles\": [\n        \"seller\"\n      ],\n      \"method\": \"local\"\n    }\n  ],\n  \"topPayers\": [\n    {\n      \"_id\": \"6500seller\",\n      \"total\": 1200,\n      \"user\": {\n        \"username\": \"Hanan\",\n        \"email\": \"hanan@example.com\",\n        \"profileImage\": null\n      }\n    }\n  ]\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2567,12 +2567,12 @@
                       "value": "20"
                     },
                     {
-                      "key": "role",
+                      "key": "roles",
                       "value": "seller"
                     },
                     {
-                      "key": "active",
-                      "value": "true"
+                      "key": "status",
+                      "value": "active"
                     },
                     {
                       "key": "search",
@@ -2580,7 +2580,7 @@
                     }
                   ]
                 },
-                "description": "Supports `email`, `username`, `role`, `active`, `fields`, `sortBy`, `sortDir`, `skip`, `limit`. Returns paginated docs.\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6500seller\",\n      \"username\": \"Hanan\",\n      \"email\": \"hanan@example.com\",\n      \"active\": true\n    }\n  ],\n  \"total\": 3,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "description": "Supports `email`, `username`, `role(s)`, `status`, auth `method`, `fields`, `sortBy`, `sortDir`, `skip`, `limit`. Returns enriched rows with counts and wallet info.\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6500seller\",\n      \"username\": \"Hanan\",\n      \"email\": \"hanan@example.com\",\n      \"phoneNumber\": \"+96550001111\",\n      \"active\": true,\n      \"status\": \"active\",\n      \"joinedDate\": \"2025-01-05T12:00:00.000Z\",\n      \"roles\": [\n        \"seller\"\n      ],\n      \"primaryRole\": \"seller\",\n      \"contactMethod\": \"email\",\n      \"contactValue\": \"hanan@example.com\",\n      \"contactChannel\": \"local\",\n      \"numListings\": 3,\n      \"numRequests\": 1,\n      \"walletBalance\": 200,\n      \"walletLocked\": 50,\n      \"walletTotal\": 250,\n      \"rating\": 4.8,\n      \"ratingCount\": 27,\n      \"occupation\": \"Carpenter\",\n      \"profileImage\": null,\n      \"country\": \"Kuwait\",\n      \"region\": \"Ahmadi\",\n      \"followerCount\": 10,\n      \"followingCount\": 5\n    }\n  ],\n  \"total\": 3,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2665,6 +2665,14 @@
                       "value": "iphone"
                     },
                     {
+                      "key": "occupation",
+                      "value": "Designer"
+                    },
+                    {
+                      "key": "method",
+                      "value": "email"
+                    },
+                    {
                       "key": "limit",
                       "value": "20"
                     },
@@ -2674,7 +2682,7 @@
                     }
                   ]
                 },
-                "description": "Aggregates seller info, counts offers, and supports additional filters (`sellerType`, `method`).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6501...\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\"\n      },\n      \"sellerName\": \"Ayesha\",\n      \"offersCount\": 3,\n      \"sellerPhone\": \"+96511112222\"\n    }\n  ],\n  \"total\": 5,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "description": "Aggregates seller info, promotion snapshot, offer counts, and supports extra filters (`sellerType`, `occupation`, `method`).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6501...\",\n      \"image\": \"https://cdn.example.com/iphone.jpg\",\n      \"title\": {\n        \"en\": \"iPhone 14 Pro 256GB\"\n      },\n      \"condition\": \"new\",\n      \"category\": \"Electronics\",\n      \"sellerName\": \"Ayesha\",\n      \"sellerOccupation\": \"Designer\",\n      \"price\": 320,\n      \"status\": \"open\",\n      \"reviewStatus\": \"pending\",\n      \"promotion\": {\n        \"tier\": \"Premium\",\n        \"planName\": \"Homepage Hero 14d\",\n        \"price\": 80,\n        \"remainingDays\": 7,\n        \"status\": \"active\",\n        \"endsAt\": \"2025-02-01T00:00:00.000Z\"\n      },\n      \"totalBids\": 3,\n      \"budgetType\": \"fixed\",\n      \"sellerContact\": {\n        \"phone\": \"+96511112222\",\n        \"email\": \"seller@example.com\",\n        \"method\": \"email\"\n      },\n      \"createdAt\": \"2025-01-05T12:00:00.000Z\",\n      \"isPromoted\": true\n    }\n  ],\n  \"total\": 5,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2702,7 +2710,7 @@
                     "6501abcdef1234567890abcd"
                   ]
                 },
-                "description": "Returns listing plus enriched offers (bidder name, phone, profile image).\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    }\n  },\n  \"offers\": [\n    {\n      \"id\": \"6503...\",\n      \"bidderName\": \"Hassan\",\n      \"phoneNumber\": \"+96522223333\",\n      \"amount\": 290,\n      \"status\": \"pending\"\n    }\n  ]\n}",
+                "description": "Returns listing plus seller info, promotion snapshot, budget type, and enriched offers (bidder name, phone, profile image).\n\nSample Response:\n{\n  \"listing\": {\n    \"_id\": \"6501abcdef1234567890abcd\",\n    \"title\": {\n      \"en\": \"iPhone 14 Pro 256GB\",\n      \"ar\": \"\"\n    },\n    \"price\": 320,\n    \"status\": \"open\",\n    \"budgetType\": \"fixed\",\n    \"reviewStatus\": \"approved\",\n    \"promotion\": {\n      \"tier\": \"Premium\",\n      \"planName\": \"Homepage Hero 14d\",\n      \"remainingDays\": 7,\n      \"status\": \"active\"\n    },\n    \"seller\": {\n      \"id\": \"6500seller\",\n      \"name\": \"Ayesha\",\n      \"email\": \"seller@example.com\",\n      \"phone\": \"+96511112222\",\n      \"occupation\": \"Designer\",\n      \"method\": \"email\",\n      \"rating\": 4.9,\n      \"ratingCount\": 32\n    }\n  },\n  \"offers\": [\n    {\n      \"id\": \"6503...\",\n      \"bidderName\": \"Hassan\",\n      \"bidderProfileImage\": null,\n      \"phoneNumber\": \"+96522223333\",\n      \"amount\": 290,\n      \"date\": \"2025-01-06T10:00:00.000Z\",\n      \"status\": \"pending\",\n      \"proposalText\": {\n        \"en\": \"Can deliver in 2 days\",\n        \"ar\": \"\"\n      },\n      \"completedTime\": null\n    }\n  ]\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2855,7 +2863,7 @@
                     }
                   ]
                 },
-                "description": "Joins creator info and counts total applications (offers).\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\"\n      },\n      \"creatorName\": \"Omar\",\n      \"totalApplications\": 4\n    }\n  ],\n  \"total\": 2,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20\n}",
+                "description": "Joins creator info, escrow funded flag and promotion snapshot, counts total applications (offers), and returns summary cards.\n\nSample Response:\n{\n  \"docs\": [\n    {\n      \"_id\": \"6502...\",\n      \"title\": {\n        \"en\": \"Need a bilingual landing page\"\n      },\n      \"promoted\": true,\n      \"escrowFunded\": true,\n      \"creatorName\": \"Omar\",\n      \"creatorAddress\": \"Kuwait City\",\n      \"creatorPhone\": \"+96550002222\",\n      \"createdAt\": \"2025-01-04T12:00:00.000Z\",\n      \"pricingType\": \"fixed\",\n      \"status\": \"open\",\n      \"totalApplications\": 4,\n      \"deadlineDate\": \"2025-01-30T00:00:00.000Z\",\n      \"promotion\": {\n        \"planName\": \"Spotlight 7 days\",\n        \"tier\": \"Spotlight 7 days\",\n        \"remainingDays\": 3,\n        \"status\": \"active\"\n      }\n    }\n  ],\n  \"total\": 2,\n  \"page\": 1,\n  \"pages\": 1,\n  \"limit\": 20,\n  \"summary\": {\n    \"total\": 2,\n    \"active\": 1,\n    \"completed\": 0,\n    \"pending\": 1\n  }\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2883,7 +2891,7 @@
                     "6502abcdef1234567890cdef"
                   ]
                 },
-                "description": "Includes applicant list with bidder profile snapshots.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    }\n  },\n  \"applicants\": [\n    {\n      \"id\": \"6503...\",\n      \"name\": \"Hassan\",\n      \"bidAmount\": 700,\n      \"applicationDate\": \"2023-09-24T10:00:00Z\",\n      \"status\": \"pending\",\n      \"coverLetter\": {\n        \"en\": \"Can deliver in 1 week\"\n      }\n    }\n  ]\n}",
+                "description": "Includes requester profile, attachments, promotion/escrow info, and applicants with bidder profile snapshots.\n\nSample Response:\n{\n  \"request\": {\n    \"_id\": \"6502abcdef1234567890cdef\",\n    \"title\": {\n      \"en\": \"Need a bilingual landing page\",\n      \"ar\": \"\"\n    },\n    \"pricingType\": \"fixed\",\n    \"status\": \"open\",\n    \"files\": [],\n    \"attachments\": [],\n    \"requester\": {\n      \"id\": \"6500requester\",\n      \"name\": \"Omar\",\n      \"email\": \"omar@example.com\",\n      \"phone\": \"+96550002222\",\n      \"occupation\": \"Marketer\",\n      \"location\": {\n        \"addressLine\": \"Kuwait City\"\n      },\n      \"rating\": 4.6,\n      \"ratingCount\": 10,\n      \"method\": \"email\"\n    },\n    \"promotion\": {\n      \"planName\": \"Spotlight 7 days\",\n      \"remainingDays\": 3,\n      \"status\": \"active\"\n    },\n    \"escrow\": {\n      \"status\": \"held\",\n      \"amount\": 500,\n      \"paymentMethod\": \"wallet\"\n    }\n  },\n  \"applicants\": [\n    {\n      \"id\": \"6503...\",\n      \"name\": \"Hassan\",\n      \"img\": null,\n      \"phone\": \"+96555555555\",\n      \"bidAmount\": 700,\n      \"completedTime\": null,\n      \"applicationDate\": \"2023-09-24T10:00:00Z\",\n      \"status\": \"pending\",\n      \"coverLetter\": {\n        \"en\": \"Can deliver in 1 week\"\n      }\n    }\n  ]\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -3195,7 +3203,7 @@
                     }
                   ]
                 },
-                "description": "Paginated list of transactions with optional filters on `status`, `type`, `paymentMethod`, `userId`.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"txn_001\",\n      \"userId\": \"6500seller\",\n      \"type\": \"promotion\",\n      \"amount\": 25,\n      \"status\": \"completed\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 42,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "description": "Paginated list of transactions with optional filters on `status`, `type`, `paymentMethod`, `userId`, `escrow`. Includes enriched itemName, paymentMethodLabel and escrow summary.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"txn_001\",\n      \"userId\": \"6500seller\",\n      \"type\": \"promotion\",\n      \"description\": \"Promotion purchase\",\n      \"amount\": 25,\n      \"currency\": \"KWD\",\n      \"paymentMethod\": \"card\",\n      \"paymentMethodLabel\": \"Card\",\n      \"status\": \"completed\",\n      \"escrow\": {\n        \"hasEscrow\": false\n      },\n      \"user\": {\n        \"username\": \"Hassan\",\n        \"email\": \"seller@example.com\"\n      },\n      \"itemName\": \"Homepage Hero 14d\",\n      \"createdAt\": \"2025-01-04T12:00:00.000Z\",\n      \"txnId\": \"promo_txn_001\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 42,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -3223,7 +3231,7 @@
                     "summary"
                   ]
                 },
-                "description": "Aggregates totals (total transactions, revenue from credit-type transactions, failed counts, pending amount).\n\nSample Response:\n{\n  \"totalTransactions\": 452,\n  \"totalRevenue\": 18050,\n  \"failedTransactions\": 3,\n  \"pendingAmount\": 120\n}",
+                "description": "Aggregates totals (total transactions, monthly revenue + %, failed counts, pending escrow amount).\n\nSample Response:\n{\n  \"totalTransactions\": 452,\n  \"totalRevenue\": {\n    \"value\": 18050,\n    \"monthlyChangePct\": 12.3\n  },\n  \"totalEscrowPending\": 1200,\n  \"failedTransactions\": 3\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -3410,7 +3418,7 @@
                     }
                   ]
                 },
-                "description": "Lists escrow records with payer/recipient user info for quick triage.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"650b...\",\n      \"amount\": 320,\n      \"status\": \"active\",\n      \"payer\": {\n        \"username\": \"Omar\"\n      },\n      \"recipient\": {\n        \"username\": \"Hassan\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 3,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
+                "description": "Lists escrow records with type, item name, payer/recipient, amount, payment method and status for quick triage.\n\nSample Response:\n{\n  \"data\": [\n    {\n      \"_id\": \"650b...\",\n      \"type\": \"listing\",\n      \"itemName\": \"iPhone 14 Pro 256GB\",\n      \"amount\": 320,\n      \"paymentMethod\": \"card\",\n      \"status\": \"active\",\n      \"timestamp\": \"2025-01-03T12:00:00.000Z\",\n      \"payer\": {\n        \"username\": \"Omar\",\n        \"email\": \"buyer@example.com\"\n      },\n      \"recipient\": {\n        \"username\": \"Hassan\",\n        \"email\": \"seller@example.com\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 3,\n    \"page\": 1,\n    \"limit\": 20\n  }\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -3438,7 +3446,7 @@
                     "650babcdef1234567890abcd"
                   ]
                 },
-                "description": "Returns escrow, payer/recipient info, and ledger history.\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"amount\": 320,\n    \"status\": \"active\",\n    \"payer\": {\n      \"username\": \"Omar\"\n    },\n    \"recipient\": {\n      \"username\": \"Hassan\"\n    }\n  },\n  \"ledgers\": [\n    {\n      \"_id\": \"led10\",\n      \"walletId\": \"wallet_buyer\",\n      \"type\": \"debit\",\n      \"category\": \"escrow_hold\",\n      \"amount\": 320\n    }\n  ]\n}",
+                "description": "Returns escrow, payer/recipient info, item name, release history, and ledger history.\n\nSample Response:\n{\n  \"escrow\": {\n    \"_id\": \"650babcdef1234567890abcd\",\n    \"type\": \"listing\",\n    \"itemName\": \"iPhone 14 Pro 256GB\",\n    \"amount\": 320,\n    \"status\": \"active\",\n    \"paymentMethod\": \"card\",\n    \"payer\": {\n      \"username\": \"Omar\",\n      \"email\": \"buyer@example.com\"\n    },\n    \"recipient\": {\n      \"username\": \"Hassan\",\n      \"email\": \"seller@example.com\"\n    },\n    \"releaseHistory\": []\n  },\n  \"ledgers\": [\n    {\n      \"_id\": \"led10\",\n      \"walletId\": \"wallet_buyer\",\n      \"type\": \"debit\",\n      \"category\": \"escrow_hold\",\n      \"amount\": 320\n    }\n  ]\n}",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

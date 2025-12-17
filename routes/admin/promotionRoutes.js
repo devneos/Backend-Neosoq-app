@@ -10,6 +10,10 @@ router.use(verifyJWT, isAdmin);
 router.post('/', adminController.createPlan);
 router.get('/', adminController.listPlans);
 router.put('/:id', adminController.updatePlan);
+router.delete('/:id', adminController.deletePlan);
+
+// Summary cards
+router.get('/summary/cards', adminController.getSummary);
 
 // Purchases
 router.get('/purchases', adminController.listPurchases);
