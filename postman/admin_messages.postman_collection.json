@@ -21,8 +21,11 @@
       "response": [
         {
           "name": "200 OK",
+          "status": "OK",
           "code": 200,
-          "_body": "{\n  \"cards\": {\n    \"totalMessages\": { \"value\": 1200, \"changePct\": 12.5 },\n    \"flaggedMessages\": { \"value\": 23, \"changePct\": -5.2 },\n    \"activeReports\": { \"value\": 14, \"changePct\": 3.1 },\n    \"urgentReports\": { \"value\": 4, \"changePct\": 1.2 }\n  }\n}"
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"cards\": {\n    \"totalMessages\": { \"value\": 1200, \"changePct\": 12.5 },\n    \"flaggedMessages\": { \"value\": 23, \"changePct\": -5.2 },\n    \"activeReports\": { \"value\": 14, \"changePct\": 3.1 },\n    \"urgentReports\": { \"value\": 4, \"changePct\": 1.2 }\n  }\n}"
         }
       ]
     },
@@ -46,8 +49,11 @@
       "response": [
         {
           "name": "200 OK",
+          "status": "OK",
           "code": 200,
-          "_body": "{\n  \"docs\": [\n    {\n      \"_id\": \"...\",\n      \"senderName\": \"alice\",\n      \"receiverName\": \"bob\",\n      \"contentPreview\": \"This is a preview...\",\n      \"createdAt\": \"2025-12-17T10:00:00Z\",\n      \"status\": \"flagged\",\n      \"flagged\": true\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 42\n}"
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"docs\": [\n    {\n      \"_id\": \"66f1a0b2c9d1234567890abc\",\n      \"senderName\": \"alice\",\n      \"receiverName\": \"bob\",\n      \"contentPreview\": \"This is a preview...\",\n      \"createdAt\": \"2025-12-17T10:00:00Z\",\n      \"status\": \"flagged\",\n      \"flagged\": true,\n      \"moderationStatus\": \"flagged\",\n      \"reportCount\": 2\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 42\n}"
         }
       ]
     },
@@ -58,7 +64,16 @@
         "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
         "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}/flag", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}","flag"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"message\": { \"_id\": \"...\", \"flagged\": true, \"moderationStatus\": \"flagged\" } }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"message\": {\n    \"_id\": \"66f1a0b2c9d1234567890abc\",\n    \"flagged\": true,\n    \"moderationStatus\": \"flagged\",\n    \"flaggedAt\": \"2025-12-17T10:10:00Z\",\n    \"flaggedBy\": \"adminUser\"\n  }\n}"
+        }
+      ]
     },
     {
       "name": "Unflag Message",
@@ -67,7 +82,16 @@
         "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
         "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}/unflag", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}","unflag"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"message\": { \"_id\": \"...\", \"flagged\": false, \"moderationStatus\": \"resolved\" } }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"message\": {\n    \"_id\": \"66f1a0b2c9d1234567890abc\",\n    \"flagged\": false,\n    \"moderationStatus\": \"resolved\",\n    \"unflaggedAt\": \"2025-12-17T10:12:00Z\",\n    \"unflaggedBy\": \"adminUser\"\n  }\n}"
+        }
+      ]
     },
     {
       "name": "Delete Message",
@@ -76,7 +100,16 @@
         "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
         "url": { "raw": "{{baseUrl}}/admin/messages/{{messageId}}", "host": ["{{baseUrl}}"], "path": ["admin","messages","{{messageId}}"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"ok\": true }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"ok\": true,\n  \"deletedId\": \"66f1a0b2c9d1234567890abc\",\n  \"deletedAt\": \"2025-12-17T10:15:00Z\",\n  \"deletedBy\": \"adminUser\"\n}"
+        }
+      ]
     },
     {
       "name": "List Reports",
@@ -99,8 +132,11 @@
       "response": [
         {
           "name": "200 OK",
+          "status": "OK",
           "code": 200,
-          "_body": "{\n  \"docs\": [\n    {\n      \"_id\": \"...\",\n      \"reporter\": \"alice\",\n      \"accused\": \"bob\",\n      \"issueType\": \"fraud\",\n      \"description\": \"Reported content...\",\n      \"priority\": \"urgent\",\n      \"status\": \"open\",\n      \"flagged\": true,\n      \"createdAt\": \"2025-12-17T09:00:00Z\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 3\n}"
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"docs\": [\n    {\n      \"_id\": \"66f1a0b2c9d1234567890def\",\n      \"reporter\": \"alice\",\n      \"accused\": \"bob\",\n      \"issueType\": \"fraud\",\n      \"description\": \"Reported content...\",\n      \"priority\": \"urgent\",\n      \"status\": \"open\",\n      \"flagged\": true,\n      \"createdAt\": \"2025-12-17T09:00:00Z\",\n      \"messageId\": \"66f19fff1231231231231234\",\n      \"evidence\": [\"https://cdn.example.com/screenshot.png\"]\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 20,\n  \"total\": 3\n}"
         }
       ]
     },
@@ -115,7 +151,16 @@
         "body": { "mode": "raw", "raw": "{\n  \"status\": \"resolved\",\n  \"priority\": \"normal\",\n  \"flagged\": false\n}" },
         "url": { "raw": "{{baseUrl}}/admin/messages/reports/{{reportId}}/status", "host": ["{{baseUrl}}"], "path": ["admin","messages","reports","{{reportId}}","status"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"report\": { \"_id\": \"...\", \"status\": \"resolved\", \"priority\": \"normal\" } }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"report\": {\n    \"_id\": \"66f1a0b2c9d1234567890def\",\n    \"status\": \"resolved\",\n    \"priority\": \"normal\",\n    \"flagged\": false,\n    \"updatedAt\": \"2025-12-17T10:20:00Z\",\n    \"updatedBy\": \"adminUser\"\n  }\n}"
+        }
+      ]
     },
     {
       "name": "Get Settings",
@@ -124,7 +169,16 @@
         "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
         "url": { "raw": "{{baseUrl}}/admin/messages/settings", "host": ["{{baseUrl}}"], "path": ["admin","messages","settings"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"settings\": { \"autoFlagKeywords\": [\"spam\",\"fraud\"], \"autoResolveDays\": 30 } }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"settings\": {\n    \"autoFlagKeywords\": [\"spam\", \"fraud\"],\n    \"autoResolveDays\": 30,\n    \"notifyAdmins\": true,\n    \"maxFlagsBeforeAutoHide\": 3\n  }\n}"
+        }
+      ]
     },
     {
       "name": "Update Settings",
@@ -137,7 +191,16 @@
         "body": { "mode": "raw", "raw": "{\n  \"autoFlagKeywords\": [\"spam\", \"scam\"],\n  \"autoResolveDays\": 14,\n  \"notifyAdmins\": true\n}" },
         "url": { "raw": "{{baseUrl}}/admin/messages/settings", "host": ["{{baseUrl}}"], "path": ["admin","messages","settings"] }
       },
-      "response": [ { "name": "200 OK", "code": 200, "_body": "{ \"settings\": { \"autoFlagKeywords\": [\"spam\",\"scam\"], \"autoResolveDays\": 14, \"notifyAdmins\": true } }" } ]
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"settings\": {\n    \"autoFlagKeywords\": [\"spam\", \"scam\"],\n    \"autoResolveDays\": 14,\n    \"notifyAdmins\": true,\n    \"maxFlagsBeforeAutoHide\": 2\n  }\n}"
+        }
+      ]
     }
   ],
   "variable": [
